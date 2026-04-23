@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+firebase-admin
+imagehash
+Pillow
+cloudinary
+httpx
+python-multipart
