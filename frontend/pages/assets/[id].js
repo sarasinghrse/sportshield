@@ -89,6 +89,10 @@ export default function AssetDetail() {
               {(asset.matchCount || 0) > 0 && (
                 <span className="text-xs text-red-400 font-semibold">⚠️ {asset.matchCount} match{asset.matchCount !== 1 ? 'es' : ''} found</span>
               )}
+              <Link href={`/certificate/${id}`}
+                className="inline-flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-500/30 hover:border-yellow-500/60 px-2.5 py-1 rounded-full transition-colors">
+                🏅 Certificate
+              </Link>
             </div>
           </div>
         </div>

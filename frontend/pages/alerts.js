@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell, ArrowLeft, ExternalLink, CheckCheck } from 'lucide-react';
+import { Bell, ArrowLeft, ExternalLink, CheckCheck, FileText } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
-import { subscribeToAlerts, markAlertRead } from '../lib/firebase';
+import { db, subscribeToAlerts, markAlertRead } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+
+const TAKEDOWN_STATUSES = [
+  { value: 'none',         label: 'No Action' },
+  { value: 'sent',         label: 'Notice Sent' },
+  { value: 'acknowledged', label: 'Acknowledged' },
+  { value: 'removed',      label: 'Content Removed' },
+  { value: 'disputed',     label: 'Disputed' },
+];
+
+function setTakedownStatus(alertId, status) {
+  return updateDoc(doc(db, 'alerts', alertId), { takedownStatus: status });
+}
 
 export default function AlertsPage() {
   const [alerts,     setAlerts]     = useState([]);
@@ -103,6 +116,17 @@ function AlertCard({ alert }) {
   const barColor   = confidence >= 90 ? 'bg-red-500'    : confidence >= 75 ? 'bg-yellow-500' : 'bg-green-500';
   const textColor  = confidence >= 90 ? 'text-red-400'  : confidence >= 75 ? 'text-yellow-400' : 'text-green-400';
 
+  const currentStatus = alert.takedownStatus || 'none';
+  const statusLabel   = TAKEDOWN_STATUSES.find(s => s.value === currentStatus)?.label || 'No Action';
+
+  const handleTakedownChange = async (e) => {
+    try {
+      await setTakedownStatus(alert.id, e.target.value);
+    } catch {
+      toast?.error?.('Failed to update status');
+    }
+  };
+
   return (
     <div className={`border rounded-xl overflow-hidden ${cfg.border} ${cfg.bg} ${!alert.isRead ? 'ring-1 ring-red-500/30' : ''}`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800/50">
@@ -113,6 +137,7 @@ function AlertCard({ alert }) {
         </div>
         <span className="text-xs text-gray-500">{formatDistanceToNow(createdAt, { addSuffix: true })}</span>
       </div>
+
       <div className="px-4 py-3">
         <p className="text-sm font-semibold text-white mb-2">Unauthorized use detected — {confidence}% confidence</p>
         <div className="flex items-center gap-2 mb-3">
@@ -123,12 +148,33 @@ function AlertCard({ alert }) {
         </div>
         {alert.foundUrl && (
           <a href={alert.foundUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 truncate">
+            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 truncate mb-3">
             <ExternalLink size={11} />{alert.foundUrl}
           </a>
         )}
+
+        {/* Takedown status */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 flex-shrink-0">Takedown:</span>
+          <select
+            value={currentStatus}
+            onChange={handleTakedownChange}
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-red-500 transition-colors"
+          >
+            {TAKEDOWN_STATUSES.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div className="flex items-center justify-end gap-2 px-4 py-2 border-t border-gray-800/50">
+
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-t border-gray-800/50">
+        {/* DMCA Notice link */}
+        <Link href={`/dmca/${alert.id}`}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
+          <FileText size={12} /> DMCA Notice
+        </Link>
+
         {!alert.isRead && (
           <button onClick={() => markAlertRead(alert.id).catch(() => toast.error('Failed'))}
             className="text-xs text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors">

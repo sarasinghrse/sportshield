@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import media, alerts
+from services.scheduler import start_scheduler
 
 app = FastAPI(title="SportShield API")
+
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()
 
 app.add_middleware(
     CORSMiddleware,

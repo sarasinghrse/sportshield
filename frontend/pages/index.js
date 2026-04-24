@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { subscribeToAssets, subscribeToAlerts, markAlertRead } from '../lib/firebase';
+import { useAuth } from '../lib/useAuth';
 
 export default function Dashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [assets,  setAssets]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace('/login');
+  }, [user, authLoading]);
 
   useEffect(() => {
     const unsubAssets = subscribeToAssets(data => { setAssets(data); setLoading(false); });
@@ -18,6 +25,23 @@ export default function Dashboard() {
   const totalMatches = assets.reduce((s, a) => s + (a.matchCount || 0), 0);
   const scanning     = assets.filter(a => a.status === 'scanning').length;
 
+  // Protection score: starts at 100, -10 per unread alert, -5 per scanning asset
+  const protectionScore = Math.max(0, 100 - unread * 10 - scanning * 5);
+  const scoreColor =
+    protectionScore >= 80 ? 'text-green-400'
+    : protectionScore >= 50 ? 'text-yellow-400'
+    : 'text-red-400';
+  const scoreRingColor =
+    protectionScore >= 80 ? 'stroke-green-400'
+    : protectionScore >= 50 ? 'stroke-yellow-400'
+    : 'stroke-red-400';
+
+  if (authLoading) return (
+    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <p className="text-gray-500">Loading…</p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
@@ -26,9 +50,17 @@ export default function Dashboard() {
           <span className="text-xl font-bold">SportShield</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/analytics"
+            className="text-gray-400 hover:text-white text-sm px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors hidden sm:block">
+            Analytics
+          </Link>
+          <Link href="/settings"
+            className="text-gray-400 hover:text-white text-sm px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors hidden sm:block">
+            Settings
+          </Link>
           <Link href="/upload"
             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            + Upload Media
+            + Upload
           </Link>
           <Link href="/alerts" className="relative">
             <span className="text-2xl">🔔</span>
@@ -42,6 +74,53 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* Protection Score Card */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8 flex items-center gap-6">
+          {/* Ring gauge */}
+          <div className="relative flex-shrink-0">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="#1f2937" strokeWidth="7" />
+              <circle
+                cx="40" cy="40" r="34"
+                fill="none"
+                className={scoreRingColor}
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 34}`}
+                strokeDashoffset={`${2 * Math.PI * 34 * (1 - protectionScore / 100)}`}
+                transform="rotate(-90 40 40)"
+                style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className={`text-xl font-black ${scoreColor}`}>{protectionScore}</span>
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="text-lg font-bold text-white mb-0.5">Protection Score</p>
+            <p className="text-sm text-gray-400 mb-3">
+              {protectionScore >= 80
+                ? 'Your assets are well protected.'
+                : protectionScore >= 50
+                ? 'Some alerts need your attention.'
+                : 'High risk — review your alerts now.'}
+            </p>
+            <div className="flex gap-3 flex-wrap">
+              <Link href="/analytics"
+                className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-colors">
+                View Analytics
+              </Link>
+              {unread > 0 && (
+                <Link href="/alerts"
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg transition-colors">
+                  {unread} Unread Alert{unread !== 1 ? 's' : ''}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Assets Protected', value: assets.length,  icon: '🛡️', color: 'border-blue-500/30 bg-blue-500/5' },

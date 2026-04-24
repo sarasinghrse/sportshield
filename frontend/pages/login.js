@@ -1,9 +1,20 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Shield } from 'lucide-react';
-import { auth } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
+
+async function redirectAfterLogin(uid, router) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  router.push(snap.exists() ? '/' : '/onboarding');
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,39 +23,33 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading,  setLoading]  = useState(false);
 
-  const handleDemoEnter = () => router.push('/');
-
-  const handleGoogleSignIn = async () => {
+  const handleGoogle = async () => {
     setLoading(true);
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      router.push('/');
+      const result = await signInWithPopup(auth, new GoogleAuthProvider());
+      await redirectAfterLogin(result.user.uid, router);
     } catch {
-      toast.error('Google sign-in failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      toast.error('Google sign-in failed.');
+    } finally { setLoading(false); }
   };
 
-  const handleEmailAuth = async (e) => {
+  const handleEmail = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignUp) { await createUserWithEmailAndPassword(auth, email, password); }
-      else          { await signInWithEmailAndPassword(auth, email, password); }
-      router.push('/');
+      const fn = isSignUp ? createUserWithEmailAndPassword : signInWithEmailAndPassword;
+      const result = await fn(auth, email, password);
+      await redirectAfterLogin(result.user.uid, router);
     } catch (err) {
-      const messages = {
-        'auth/user-not-found':     'No account found with this email.',
-        'auth/wrong-password':     'Incorrect password.',
-        'auth/email-already-in-use': 'Email already registered. Try signing in.',
-        'auth/weak-password':      'Password must be at least 6 characters.',
-        'auth/invalid-email':      'Invalid email address.',
+      const msgs = {
+        'auth/user-not-found':       'No account found.',
+        'auth/wrong-password':       'Incorrect password.',
+        'auth/email-already-in-use': 'Email already registered.',
+        'auth/weak-password':        'Password must be 6+ characters.',
+        'auth/invalid-email':        'Invalid email.',
       };
-      toast.error(messages[err.code] || 'Authentication failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      toast.error(msgs[err.code] || 'Authentication failed.');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -59,17 +64,12 @@ export default function LoginPage() {
           <p className="text-gray-400 mt-1">Sports Media IP Protection</p>
         </div>
 
-        <button onClick={handleDemoEnter}
-          className="w-full mb-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base transition-colors">
-          🚀 Enter Demo (no login needed)
-        </button>
-        <p className="text-center text-gray-600 text-xs mb-6">— or sign in with a real account below —</p>
-
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
           <h2 className="text-lg font-semibold text-white mb-6">
-            {isSignUp ? 'Create your account' : 'Sign in to your account'}
+            {isSignUp ? 'Create your account' : 'Sign in'}
           </h2>
-          <button onClick={handleGoogleSignIn} disabled={loading}
+
+          <button onClick={handleGoogle} disabled={loading}
             className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 py-3 rounded-xl font-medium transition-colors mb-6">
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -79,25 +79,32 @@ export default function LoginPage() {
             </svg>
             Continue with Google
           </button>
+
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-gray-800" /><span className="text-gray-600 text-sm">or</span><div className="flex-1 h-px bg-gray-800" />
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 text-sm">or</span>
+            <div className="flex-1 h-px bg-gray-800" />
           </div>
-          <form onSubmit={handleEmailAuth} className="space-y-4">
+
+          <form onSubmit={handleEmail} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@sportsteam.com"
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                placeholder="you@sportsteam.com"
                 className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition-colors placeholder-gray-600" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" minLength={6}
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+                placeholder="••••••••" minLength={6}
                 className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition-colors placeholder-gray-600" />
             </div>
             <button type="submit" disabled={loading}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition-colors">
-              {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+              {loading ? 'Please wait…' : isSignUp ? 'Create Account' : 'Sign In'}
             </button>
           </form>
+
           <p className="text-center text-gray-500 text-sm mt-6">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button onClick={() => setIsSignUp(!isSignUp)} className="text-red-400 hover:text-red-300 font-medium">

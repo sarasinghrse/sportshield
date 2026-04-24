@@ -7,3 +7,4 @@ Pillow
 cloudinary
 httpx
 python-multipart
+APScheduler==3.10.4
