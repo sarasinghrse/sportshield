@@ -1,15 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Shield, Upload, X, CheckCircle, ArrowLeft, Film, Bell } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL    = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const MAX_SIZE_MB = 50;
 
 export default function UploadPage() {
-  const router = useRouter();
-  const fileInputRef = useRef(null);
+  const router         = useRouter();
+  const fileInputRef   = useRef(null);
 
   const [selectedFile,   setSelectedFile]   = useState(null);
   const [preview,        setPreview]        = useState(null);
@@ -17,27 +18,25 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedAsset,  setUploadedAsset]  = useState(null);
   const [dragOver,       setDragOver]       = useState(false);
+  const [isPublic,       setIsPublic]       = useState(true); // default: share on community
 
   const handleFileSelect = useCallback((file) => {
     if (!file) return;
-    const allowedTypes = ['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/x-msvideo','video/webm'];
-    if (!allowedTypes.includes(file.type)) { toast.error('Unsupported file type.'); return; }
-    const sizeMB = file.size / (1024 * 1024);
-    if (sizeMB > MAX_SIZE_MB) { toast.error(`File too large (${sizeMB.toFixed(1)} MB). Max is ${MAX_SIZE_MB} MB.`); return; }
+    const allowed = ['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/x-msvideo','video/webm'];
+    if (!allowed.includes(file.type)) { toast.error('Unsupported file type.'); return; }
+    const mb = file.size / (1024 * 1024);
+    if (mb > MAX_SIZE_MB) { toast.error(`File too large (${mb.toFixed(1)} MB). Max ${MAX_SIZE_MB} MB.`); return; }
     setSelectedFile(file);
     setUploadedAsset(null);
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onload = (e) => setPreview({ type: 'image', src: e.target.result });
+      reader.onload = e => setPreview({ type: 'image', src: e.target.result });
       reader.readAsDataURL(file);
-    } else {
-      setPreview({ type: 'video' });
-    }
+    } else { setPreview({ type: 'video' }); }
   }, []);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragOver(false);
+  const handleDrop = useCallback(e => {
+    e.preventDefault(); setDragOver(false);
     handleFileSelect(e.dataTransfer.files[0]);
   }, [handleFileSelect]);
 
@@ -68,130 +67,190 @@ export default function UploadPage() {
       const data = await res.json();
       setUploadProgress(100);
       setUploadedAsset(data);
-      toast.success('Upload successful! Background scan started.');
+
+      // Set visibility based on toggle
+      if (data.id) {
+        await updateDoc(doc(db, 'assets', data.id), { isPublic });
+      }
+      toast.success(isPublic
+        ? 'Asset registered! Visible on Community Dashboard.'
+        : 'Asset registered privately! Scan started.');
     } catch (err) {
       clearInterval(iv);
       setUploadProgress(0);
       toast.error(`Upload failed: ${err.message}`);
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const handleReset = () => {
-    setSelectedFile(null); setPreview(null); setUploadedAsset(null); setUploadProgress(0);
+    setSelectedFile(null); setPreview(null);
+    setUploadedAsset(null); setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <Toaster position="top-right" />
-      <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft size={20} /><span className="text-sm">Dashboard</span>
-        </Link>
-        <div className="flex items-center gap-2 ml-2">
-          <Shield className="text-red-500" size={22} />
-          <span className="font-bold text-white">SportShield</span>
+    <div className="ap-root">
+      <Toaster position="top-right" toastOptions={{ style: { background: '#0d1f10', color: '#fff', border: '1px solid rgba(26,92,26,0.4)' } }} />
+
+      {/* Nav */}
+      <nav className="ap-nav">
+        <div className="ap-nav-left">
+          <Link href="/" className="ap-back">← Dashboard</Link>
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+          <Link href="/" className="ap-logo">
+            <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
+            <span className="ap-logo-text">SPORTSHIELD</span>
+          </Link>
+          <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Upload</span>
         </div>
       </nav>
 
-      <main className="max-w-2xl mx-auto px-6 py-12">
-        <h1 className="text-2xl font-bold text-white mb-2">Upload Media Asset</h1>
-        <p className="text-gray-400 mb-8">Upload an image or video to register its fingerprint and begin monitoring for unauthorized use.</p>
+      <main style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 className="ap-heading">Upload Media Asset</h1>
+          <p className="ap-muted" style={{ marginTop: 8 }}>
+            Upload an image or video to register its fingerprint and begin monitoring for unauthorized use.
+          </p>
+        </div>
 
         {uploadedAsset ? (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-8 text-center">
-            <CheckCircle size={48} className="text-green-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Asset Registered!</h2>
-            <p className="text-gray-400 mb-2"><strong className="text-white">{uploadedAsset.filename}</strong> has been fingerprinted.</p>
-            <p className="text-gray-500 text-sm mb-6">Background scan started. Results appear on the dashboard in a few minutes.</p>
+          /* ── Success state ── */
+          <div className="ap-card" style={{ padding: '36px 32px', textAlign: 'center', border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.04)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 16 }}>✅</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 8 }}>
+              Asset Registered!
+            </h2>
+            <p className="ap-muted" style={{ marginBottom: 6 }}>
+              <strong style={{ color: '#fff' }}>{uploadedAsset.filename}</strong> has been fingerprinted.
+            </p>
+            <p className="ap-muted" style={{ marginBottom: 4, fontSize: '0.82rem' }}>
+              Background scan started. Results appear in a few minutes.
+            </p>
+            <p style={{ fontSize: '0.8rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
+              {isPublic ? '🌐 Visible on Community Dashboard' : '🔒 Private — only you can see this'}
+            </p>
             {uploadedAsset.phash && (
-              <div className="bg-gray-900 rounded-lg p-4 mb-6 text-left">
-                <div className="text-xs text-gray-500 mb-1">Perceptual Hash (pHash)</div>
-                <code className="text-green-400 font-mono text-sm break-all">{uploadedAsset.phash}</code>
+              <div className="ap-card" style={{ padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
+                <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 6 }}>
+                  Perceptual Hash (pHash)
+                </p>
+                <code style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#4ade80', wordBreak: 'break-all' }}>
+                  {uploadedAsset.phash}
+                </code>
               </div>
             )}
-            <div className="flex gap-3 justify-center flex-wrap">
-              <button onClick={handleReset} className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-                <Upload size={16} /> Upload Another
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={handleReset} className="ap-btn ap-btn-ghost">
+                Upload Another
               </button>
-              <Link href="/" className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors">
+              <Link href="/" className="ap-btn ap-btn-green">
                 View Dashboard →
               </Link>
             </div>
           </div>
         ) : (
           <>
+            {/* ── Drop zone ── */}
             <div
+              className={`ap-dropzone${dragOver ? ' drag' : ''}${selectedFile ? ' has-file' : ''}`}
               onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onClick={() => !selectedFile && fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${
-                dragOver ? 'border-red-500 bg-red-500/10' : selectedFile ? 'border-gray-700 bg-gray-900 cursor-default' : 'border-gray-700 bg-gray-900 hover:border-red-500/50'}`}
             >
-              <input ref={fileInputRef} type="file" className="hidden"
+              <input ref={fileInputRef} type="file"
+                style={{ display: 'none' }}
                 accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/x-msvideo,video/webm"
-                onChange={(e) => handleFileSelect(e.target.files?.[0])} />
+                onChange={e => handleFileSelect(e.target.files?.[0])} />
+
               {!selectedFile ? (
-                <>
-                  <Upload size={48} className="text-gray-600 mx-auto mb-4" />
-                  <p className="text-white font-semibold mb-2">Drop your file here or click to browse</p>
-                  <p className="text-gray-500 text-sm">Images: JPEG, PNG, WebP, GIF · Videos: MP4, MOV, AVI, WebM</p>
-                  <p className="text-gray-600 text-xs mt-2">Maximum size: {MAX_SIZE_MB} MB</p>
-                </>
+                <div>
+                  <div style={{ fontSize: '2.5rem', marginBottom: 14 }}>📂</div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: 8 }}>
+                    Drop your file here or click to browse
+                  </p>
+                  <p className="ap-muted" style={{ fontSize: '0.82rem' }}>Images: JPEG, PNG, WebP, GIF · Videos: MP4, MOV, AVI, WebM</p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', marginTop: 6 }}>Max {MAX_SIZE_MB} MB</p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div>
                   {preview?.type === 'image' ? (
-                    <img src={preview.src} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
+                    <img src={preview.src} alt="Preview"
+                      style={{ maxHeight: 180, maxWidth: '100%', borderRadius: 10, objectFit: 'contain', marginBottom: 14 }} />
                   ) : (
-                    <div className="flex items-center justify-center gap-3">
-                      <Film size={40} className="text-blue-400" />
-                      <div className="text-left">
-                        <p className="text-white font-medium">{selectedFile.name}</p>
-                        <p className="text-gray-500 text-sm">Video file</p>
-                      </div>
-                    </div>
+                    <div style={{ fontSize: '3rem', marginBottom: 14 }}>🎬</div>
                   )}
-                  <div className="flex items-center justify-center gap-4 text-sm">
-                    <span className="text-gray-400">{selectedFile.name} · {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                    <button onClick={(e) => { e.stopPropagation(); handleReset(); }} className="text-gray-500 hover:text-red-400 transition-colors">
-                      <X size={16} />
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                    <span className="ap-muted" style={{ fontSize: '0.85rem' }}>
+                      {selectedFile.name} · {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                    <button onClick={e => { e.stopPropagation(); handleReset(); }}
+                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1.1rem', transition: 'color 0.2s' }}
+                      onMouseEnter={e => e.target.style.color = '#f87171'}
+                      onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}
+                    >✕</button>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Progress bar */}
             {uploading && (
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-400 mb-2">
-                  <span>Uploading & fingerprinting…</span><span>{uploadProgress}%</span>
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                  <span>Uploading & fingerprinting…</span>
+                  <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
-                  <div className="bg-red-500 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                <div className="ap-progress-track">
+                  <div className="ap-progress-fill" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <p className="text-xs text-gray-600 mt-2">First upload may take ~30 s while the server wakes up.</p>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)', marginTop: 6 }}>
+                  First upload may take ~30 s while the server wakes up.
+                </p>
               </div>
             )}
 
-            <button onClick={handleUpload} disabled={!selectedFile || uploading}
-              className={`mt-6 w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-colors ${
-                !selectedFile || uploading ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
-              <Shield size={20} />
+            {/* ── Public / Private toggle ── */}
+            <div className="ap-card" style={{ padding: '18px 20px', marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 3 }}>
+                  {isPublic ? '🌐 Share on Community Dashboard' : '🔒 Keep Private'}
+                </p>
+                <p className="ap-muted" style={{ fontSize: '0.78rem' }}>
+                  {isPublic
+                    ? 'This asset and its violations will be visible to everyone on the public dashboard.'
+                    : 'Only you can see this asset and its results.'}
+                </p>
+              </div>
+              <label className="ap-toggle" style={{ flexShrink: 0, marginLeft: 20 }}>
+                <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
+                <span className="ap-toggle-slider" />
+              </label>
+            </div>
+
+            {/* Upload button */}
+            <button
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+              className="ap-btn ap-btn-green"
+              style={{ marginTop: 16, width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.95rem' }}
+            >
               {uploading ? 'Uploading…' : 'Register & Start Monitoring'}
             </button>
 
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            {/* Info cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginTop: 28 }}>
               {[
-                { icon: <Shield size={18} className="text-blue-400" />, title: 'Fingerprinted', desc: 'A unique pHash is generated from your media, robust to compression and resizing.' },
-                { icon: <CheckCircle size={18} className="text-green-400" />, title: 'Scanned', desc: 'We search the web for unauthorized copies and compare against your fingerprint.' },
-                { icon: <Bell size={18} className="text-yellow-400" />, title: 'Alerted', desc: 'You get an instant alert if an unauthorized copy is found anywhere online.' },
-              ].map(({ icon, title, desc }) => (
-                <div key={title} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">{icon}<span className="font-semibold text-white">{title}</span></div>
-                  <p className="text-gray-500">{desc}</p>
+                { icon: '🔏', title: 'Fingerprinted',  desc: 'A unique pHash is generated — robust to compression, resizing, and cropping.' },
+                { icon: '🌐', title: 'Scanned',         desc: 'We search the web for unauthorized copies using reverse image search and AI.' },
+                { icon: '🔔', title: 'Alerted',         desc: 'You get an instant alert the moment an unauthorized copy is detected.' },
+              ].map(c => (
+                <div key={c.title} className="ap-card" style={{ padding: '18px 16px' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>{c.icon}</div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 6 }}>{c.title}</p>
+                  <p className="ap-muted" style={{ fontSize: '0.78rem', lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               ))}
             </div>
