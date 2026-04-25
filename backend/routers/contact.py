@@ -5,7 +5,7 @@ Required env vars:
   BREVO_SENDER_EMAIL — a verified sender in your Brevo account
 """
 from fastapi import APIRouter
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 import httpx
 from config import BREVO_SMTP_KEY, BREVO_SENDER_EMAIL
 
@@ -19,7 +19,7 @@ TEAM_EMAILS = [
 
 class ContactForm(BaseModel):
     name: str
-    email: EmailStr
+    email: str
     subject: str = "SportShield Contact"
     message: str
 
