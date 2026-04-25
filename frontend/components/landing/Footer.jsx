@@ -56,7 +56,7 @@ export default function Footer() {
         {/* Brand */}
         <div className="ss-footer-brand">
           <Link href="/landing" className="ss-footer-logo">
-            <img src="/images/sportshield-logo.png" alt="SportShield" />
+            <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
             <span className="ss-footer-logo-text">SPORTSHIELD</span>
           </Link>
           <p className="ss-footer-tagline">
