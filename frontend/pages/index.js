@@ -277,7 +277,7 @@ export default function Dashboard() {
                 const pct = Math.round((alert.confidence || 0) * 100);
                 return (
                   <div key={alert.id} className="db-alert-row">
-                    <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>🚨</span>
+                    <span style={{ flexShrink: 0, color: '#f87171', display:'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', marginBottom: 3 }}>
                         {pct}% confidence — unauthorized copy detected
@@ -304,7 +304,7 @@ export default function Dashboard() {
               <div className="db-card" style={{ padding: 48, textAlign: 'center', color: C.muted }}>Loading…</div>
             ) : assets.length === 0 ? (
               <div className="db-card" style={{ padding: 56, textAlign: 'center' }}>
-                <div style={{ fontSize: '3rem', marginBottom: 16 }}>🛡️</div>
+                <div style={{ marginBottom: 16, display:'flex', justifyContent:'center' }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                 <p style={{ color: '#fff', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '1.2rem', marginBottom: 8 }}>
                   No assets yet
                 </p>
@@ -321,6 +321,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="db-card" style={{ overflow: 'hidden' }}>
+                <div className="db-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table className="db-table">
                   <thead>
                     <tr>
@@ -334,6 +335,7 @@ export default function Dashboard() {
                     {assets.map(asset => <AssetRow key={asset.id} asset={asset} />)}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </section>
@@ -362,7 +364,7 @@ function AssetRow({ asset }) {
               onError={e => { e.target.style.display = 'none'; }} />
           ) : (
             <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(26,92,26,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.2rem' }}>
-              {asset.type === 'video' ? '🎬' : '🖼️'}
+              {asset.type === 'video' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
             </div>
           )}
           <div>
@@ -385,7 +387,7 @@ function AssetRow({ asset }) {
       </td>
       <td>
         <span style={{ fontSize: '0.88rem', fontWeight: 700, color: (asset.matchCount || 0) > 0 ? '#f87171' : 'rgba(255,255,255,0.25)' }}>
-          {(asset.matchCount || 0) > 0 ? `⚠ ${asset.matchCount}` : '—'}
+          {(asset.matchCount || 0) > 0 ? `! ${asset.matchCount}` : '—'}
         </span>
       </td>
       <td>

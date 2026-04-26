@@ -181,7 +181,7 @@ export default function SignUpPage() {
 
           {/* Feature pills */}
           <div className="su-features">
-            {['🔍 Web Scanning', '📄 DMCA Notices', '🏅 Certificates', '📊 Analytics'].map(f => (
+            {['Web Scanning', 'DMCA Notices', 'Certificates', 'Analytics'].map(f => (
               <span key={f} className="su-feature-pill">{f}</span>
             ))}
           </div>

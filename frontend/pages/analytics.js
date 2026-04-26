@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
                       <img src={a.originalUrl} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: 32, height: 32, borderRadius: 6, background: 'rgba(26,92,26,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
-                        {a.type === 'video' ? '🎬' : '🖼️'}
+                        {a.type === 'video' ? 'Video' : 'Image'}
                       </div>
                     )}
                     <p style={{ flex: 1, fontSize: '0.85rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

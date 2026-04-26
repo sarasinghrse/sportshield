@@ -87,7 +87,7 @@ export default function AssetDetail() {
               style={{ width: 88, height: 88, borderRadius: 12, objectFit: 'cover', background: 'rgba(26,92,26,0.2)', flexShrink: 0 }} />
           ) : (
             <div style={{ width: 88, height: 88, borderRadius: 12, background: 'rgba(26,92,26,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', flexShrink: 0 }}>
-              {asset.type === 'video' ? '🎬' : '🖼️'}
+              {asset.type === 'video' ? <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polygon points='23 7 16 12 23 17 23 7'/><rect x='1' y='5' width='15' height='14' rx='2' ry='2'/></svg> : <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2' ry='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>}
             </div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -110,16 +110,16 @@ export default function AssetDetail() {
               </span>
               {(asset.matchCount || 0) > 0 && (
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.8rem', color: '#f87171' }}>
-                  ⚠ {asset.matchCount} match{asset.matchCount !== 1 ? 'es' : ''} found
+                  {asset.matchCount} match{asset.matchCount !== 1 ? 'es' : ''} found
                 </span>
               )}
               <Link href={`/certificate/${id}`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: '#fbbf24', textDecoration: 'none', border: '1px solid rgba(251,191,36,0.28)', borderRadius: 20, padding: '3px 10px', transition: 'border-color 0.2s' }}>
-                🏅 Certificate
+                Certificate
               </Link>
               {/* Visibility toggle */}
               <button onClick={toggleVisibility} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', textDecoration: 'none', border: `1px solid ${isPublic ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.15)'}`, borderRadius: 20, padding: '3px 10px', background: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
-                {isPublic ? '🌐 Public' : '🔒 Private'}
+                {isPublic ? 'Public' : 'Private'}
               </button>
             </div>
           </div>
@@ -152,13 +152,13 @@ export default function AssetDetail() {
             <div className="ap-card" style={{ padding: 56, textAlign: 'center' }}>
               {asset.status === 'scanning' ? (
                 <>
-                  <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🔍</div>
+                  <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
                   <p className="ap-subheading" style={{ marginBottom: 6 }}>Scanning in progress…</p>
                   <p className="ap-muted">Results appear here automatically when ready.</p>
                 </>
               ) : asset.status === 'complete' ? (
                 <>
-                  <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>✅</div>
+                  <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
                   <p className="ap-subheading" style={{ marginBottom: 6 }}>No unauthorized copies found</p>
                   <p className="ap-muted">Your asset appears to be used only in authorised contexts.</p>
                 </>
@@ -181,7 +181,7 @@ export default function AssetDetail() {
                       {result.thumbnailUrl ? (
                         <img src={result.thumbnailUrl} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                       ) : (
-                        <div style={{ width: 60, height: 60, borderRadius: 8, background: 'rgba(26,92,26,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>🖼️</div>
+                        <div style={{ width: 60, height: 60, borderRadius: 8, background: 'rgba(26,92,26,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>

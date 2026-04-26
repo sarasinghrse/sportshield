@@ -55,7 +55,7 @@ export default function Onboarding() {
       <Toaster position="top-right" />
 
       <div className="flex items-center gap-3 mb-10">
-        <span className="text-3xl">🛡️</span>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <span className="text-2xl font-bold">SportShield</span>
       </div>
 
@@ -65,7 +65,7 @@ export default function Onboarding() {
           <div key={n} className="flex items-center gap-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors
               ${step > n ? 'bg-green-500 text-white' : step === n ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`}>
-              {step > n ? '✓' : n}
+              {step > n ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> : n}
             </div>
             {n < 3 && <div className={`w-12 h-0.5 ${step > n ? 'bg-green-500' : 'bg-gray-800'}`} />}
           </div>
@@ -149,7 +149,7 @@ export default function Onboarding() {
 
         {step === 3 && (
           <div className="text-center py-6">
-            <div className="text-6xl mb-4">🎉</div>
+            <div className="mb-4 flex justify-center"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
             <h2 className="text-xl font-bold mb-2">You're protected!</h2>
             <p className="text-gray-400 text-sm mb-2">Your asset is fingerprinted and a scan is running.</p>
             <p className="text-gray-500 text-xs">Taking you to your dashboard…</p>

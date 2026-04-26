@@ -256,7 +256,7 @@ export default function SettingsPage() {
               borderRadius: 8, padding: '10px 14px',
             }}>
               <p style={{ fontSize: '0.78rem', color: 'rgba(74,222,128,0.85)' }}>
-                ✓ Alerts will be sent to <strong>{user?.email}</strong>
+                Alerts will be sent to <strong>{user?.email}</strong>
               </p>
             </div>
           )}

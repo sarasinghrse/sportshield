@@ -117,14 +117,14 @@ export default function UploadPage() {
   /* ── Shared success card ── */
   const SuccessCard = ({ asset, onReset }) => (
     <div className="ap-card" style={{ padding: '36px 32px', textAlign: 'center', border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.04)' }}>
-      <div style={{ fontSize: '3rem', marginBottom: 16 }}>✅</div>
+      <div style={{ marginBottom: 16, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
       <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 8 }}>Asset Registered!</h2>
       <p className="ap-muted" style={{ marginBottom: 4 }}>
         <strong style={{ color: '#fff' }}>{asset.filename || 'Extracted image'}</strong> has been fingerprinted.
       </p>
       <p className="ap-muted" style={{ marginBottom: 4, fontSize: '0.82rem' }}>Background scan started. Results appear in a few minutes.</p>
       <p style={{ fontSize: '0.8rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
-        {isPublic ? '🌐 Visible on Community Dashboard' : '🔒 Private — only you can see this'}
+        {isPublic ? 'Visible on Community Dashboard' : 'Private — only you can see this'}
       </p>
       {asset.phash && (
         <div className="ap-card" style={{ padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
@@ -173,8 +173,8 @@ export default function UploadPage() {
         {/* Tab switcher */}
         <div style={{ display: 'flex', marginBottom: 24, background: 'rgba(12,24,14,0.7)', borderRadius: 10, border: '1px solid rgba(26,92,26,0.28)', overflow: 'hidden' }}>
           {[
-            { key: TAB_UPLOAD, label: '📂  Upload File'      },
-            { key: TAB_URL,    label: '🔗  Social / Web URL' },
+            { key: TAB_UPLOAD, label: 'Upload File' },
+            { key: TAB_URL,    label: 'Social / Web URL' },
           ].map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); setUploadedAsset(null); setSocialResult(null); }}
               style={{
@@ -206,7 +206,7 @@ export default function UploadPage() {
                   onChange={e => handleFileSelect(e.target.files?.[0])} />
                 {!selectedFile ? (
                   <div>
-                    <div style={{ fontSize: '2.5rem', marginBottom: 14 }}>📂</div>
+                    <div style={{ marginBottom: 14, display:"flex", justifyContent:"center" }}><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
                     <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: 8 }}>
                       Drop your file here or click to browse
                     </p>
@@ -218,14 +218,14 @@ export default function UploadPage() {
                     {preview?.type === 'image' ? (
                       <img src={preview.src} alt="Preview" style={{ maxHeight: 180, maxWidth: '100%', borderRadius: 10, objectFit: 'contain', marginBottom: 14 }} />
                     ) : (
-                      <div style={{ fontSize: '3rem', marginBottom: 14 }}>🎬</div>
+                      <div style={{ marginBottom: 14, display:"flex", justifyContent:"center" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                       <span className="ap-muted" style={{ fontSize: '0.85rem' }}>{selectedFile.name} · {(selectedFile.size/1024/1024).toFixed(2)} MB</span>
                       <button onClick={e => { e.stopPropagation(); handleReset(); }}
-                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1.1rem' }}
-                        onMouseEnter={e => e.target.style.color = '#f87171'}
-                        onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}>✕</button>
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', display:'flex', alignItems:'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                     </div>
                   </div>
                 )}
@@ -244,7 +244,7 @@ export default function UploadPage() {
               <div className="ap-card" style={{ padding: '18px 20px', marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                 <div>
                   <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 3 }}>
-                    {isPublic ? '🌐 Share on Community Dashboard' : '🔒 Keep Private'}
+                    {isPublic ? 'Share on Community Dashboard' : 'Keep Private'}
                   </p>
                   <p className="ap-muted" style={{ fontSize: '0.78rem' }}>
                     {isPublic ? 'Violations will be visible to everyone on the public dashboard.' : 'Only you can see this asset.'}
@@ -294,7 +294,7 @@ export default function UploadPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(26,92,26,0.2)' }}>
                   <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
-                    {isPublic ? '🌐 Public' : '🔒 Private'}
+                    {isPublic ? 'Public' : 'Private'}
                   </p>
                   <label className="ap-toggle">
                     <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
@@ -305,7 +305,7 @@ export default function UploadPage() {
                 <button onClick={handleSocialScan} disabled={!socialUrl.trim() || scanning}
                   className="ap-btn ap-btn-green"
                   style={{ marginTop: 20, width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.95rem' }}>
-                  {scanning ? 'Extracting & Scanning…' : '🔍 Extract & Scan Image'}
+                  {scanning ? 'Extracting & Scanning…' : 'Extract & Scan Image'}
                 </button>
                 {scanning && (
                   <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 10 }}>
@@ -316,12 +316,12 @@ export default function UploadPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
                 {[
-                  { icon: '📸', name: 'Instagram', note: 'Public posts only. Works on post pages — not stories.' },
-                  { icon: '🐦', name: 'Twitter / X', note: 'Public tweets with images. Paste the full tweet URL.' },
-                  { icon: '🌐', name: 'Any Web Page', note: 'Any public page with a featured image or og:image tag.' },
+                  { abbr: 'IN', color: '#c13584', name: 'Instagram', note: 'Public posts only. Works on post pages — not stories.' },
+                  { abbr: 'X', color: '#1da1f2', name: 'Twitter / X', note: 'Public tweets with images. Paste the full tweet URL.' },
+                  { abbr: 'WB', color: '#3b82f6', name: 'Any Web Page', note: 'Any public page with a featured image or og:image tag.' },
                 ].map(p => (
                   <div key={p.name} className="ap-card" style={{ padding: '16px 18px' }}>
-                    <span style={{ fontSize: '1.4rem', display: 'block', marginBottom: 6 }}>{p.icon}</span>
+                    <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:32, height:32, borderRadius:6, background:p.color, color:"#fff", fontFamily:"var(--font-display)", fontWeight:800, fontSize:"0.7rem", marginBottom:6 }}>{p.abbr}</span>
                     <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginBottom: 4 }}>{p.name}</p>
                     <p className="ap-muted" style={{ fontSize: '0.77rem', lineHeight: 1.6 }}>{p.note}</p>
                   </div>
@@ -334,12 +334,12 @@ export default function UploadPage() {
         {/* How it works mini */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginTop: 28 }}>
           {[
-            { icon: '🔏', title: 'Fingerprinted', desc: 'A pHash is generated — robust to compression, resizing, and cropping.' },
-            { icon: '🌐', title: 'Scanned',        desc: 'We search the web for unauthorized copies using reverse image search + AI.' },
-            { icon: '🔔', title: 'Alerted',        desc: 'You get an instant alert the moment an unauthorized copy is detected.' },
+            { title: 'Fingerprinted', desc: 'A pHash is generated — robust to compression, resizing, and cropping.', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> },
+            { title: 'Scanned', desc: 'We search the web for unauthorized copies using reverse image search + AI.', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
+            { title: 'Alerted', desc: 'You get an instant alert the moment an unauthorized copy is detected.', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
           ].map(c => (
             <div key={c.title} className="ap-card" style={{ padding: '18px 16px' }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>{c.icon}</div>
+              <div style={{ marginBottom: 8 }}>{c.icon}</div>
               <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 6 }}>{c.title}</p>
               <p className="ap-muted" style={{ fontSize: '0.78rem', lineHeight: 1.6 }}>{c.desc}</p>
             </div>

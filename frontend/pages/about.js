@@ -4,13 +4,13 @@ import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 
 const VALUES = [
-  { icon: '⚡', title: 'Speed matters',
+  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='#fbbf24'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>, title: 'Speed matters',
     desc: 'Violations spread fast. Our automated scans mean you find out about unauthorized use quickly — not weeks later.' },
-  { icon: '🛡️', title: 'Creators deserve protection',
+  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#4ade80' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>, title: 'Creators deserve protection',
     desc: 'Sports photography and videography take real skill. Creators deserve to control how their work is used.' },
-  { icon: '📄', title: 'Legal tools for everyone',
+  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#60a5fa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg>, title: 'Legal tools for everyone',
     desc: 'DMCA notices and ownership certificates shouldn\'t require a lawyer. We make it a 30-second task.' },
-  { icon: '🤖', title: 'AI on your side',
+  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#a78bfa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='11' width='18' height='10' rx='2'/><circle cx='12' cy='5' r='2'/><path d='M12 7v4'/><line x1='8' y1='16' x2='8.01' y2='16'/><line x1='16' y1='16' x2='16.01' y2='16'/></svg>, title: 'AI on your side',
     desc: 'From AI-generated image detection to reverse-image scanning, we put cutting-edge tools in every creator\'s hands.' },
 ];
 
@@ -84,7 +84,7 @@ export default function AboutPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20 }}>
               {VALUES.map(v => (
                 <div key={v.title} className="ap-card" style={{ padding: 28 }}>
-                  <div style={{ fontSize: '2rem', marginBottom: 14 }}>{v.icon}</div>
+                  <div style={{ marginBottom: 14 }}>{v.icon}</div>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 10 }}>{v.title}</h3>
                   <p className="ap-muted" style={{ fontSize: '0.87rem', lineHeight: 1.7 }}>{v.desc}</p>
                 </div>

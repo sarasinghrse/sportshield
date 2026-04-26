@@ -6,7 +6,7 @@ import Footer from '../components/landing/Footer';
 const FEATURES = [
   {
     id: 'monitor',
-    icon: '🌐',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>,
     color: '#4ade80',
     title: 'Media Monitoring',
     subtitle: 'Always-on watch for your sports media',
@@ -21,7 +21,7 @@ const FEATURES = [
   },
   {
     id: 'detect',
-    icon: '⚡',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='currentColor'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>,
     color: '#fbbf24',
     title: 'AI Violation Detection',
     subtitle: 'Find stolen media even after editing',
@@ -36,7 +36,7 @@ const FEATURES = [
   },
   {
     id: 'dmca',
-    icon: '📄',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/></svg>,
     color: '#f87171',
     title: 'DMCA Takedown Notices',
     subtitle: 'Legal action in 30 seconds',
@@ -51,7 +51,7 @@ const FEATURES = [
   },
   {
     id: 'cert',
-    icon: '🏅',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='8' r='6'/><path d='M15.477 12.89L17 22l-5-3-5 3 1.523-9.11'/></svg>,
     color: '#a78bfa',
     title: 'Ownership Certificate',
     subtitle: 'Prove your media ownership at any time',
@@ -66,7 +66,7 @@ const FEATURES = [
   },
   {
     id: 'analytics',
-    icon: '📊',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg>,
     color: '#38bdf8',
     title: 'Analytics Dashboard',
     subtitle: 'Understand your IP landscape at a glance',
@@ -81,7 +81,7 @@ const FEATURES = [
   },
   {
     id: 'verify',
-    icon: '🔍',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>,
     color: '#4ade80',
     title: 'URL Verification',
     subtitle: 'Check any URL for stolen sports media',
@@ -96,7 +96,7 @@ const FEATURES = [
   },
   {
     id: 'community',
-    icon: '🏟️',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='3' width='20' height='18' rx='2'/><path d='M8 21V3M16 21V3M2 12h20'/></svg>,
     color: '#86efac',
     title: 'Community Dashboard',
     subtitle: 'Transparency in the fight against sports IP theft',
@@ -111,7 +111,7 @@ const FEATURES = [
   },
   {
     id: 'ai-detect',
-    icon: '🤖',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='11' width='18' height='10' rx='2'/><circle cx='12' cy='5' r='2'/><path d='M12 7v4'/><line x1='8' y1='16' x2='8.01' y2='16'/><line x1='16' y1='16' x2='16.01' y2='16'/></svg>,
     color: '#c084fc',
     title: 'AI-Generated Image Detection',
     subtitle: 'Know if an image is real or machine-made',
@@ -126,7 +126,7 @@ const FEATURES = [
   },
   {
     id: 'social',
-    icon: '📱',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='5' y='2' width='14' height='20' rx='2' ry='2'/><line x1='12' y1='18' x2='12.01' y2='18'/></svg>,
     color: '#60a5fa',
     title: 'Social Media Scanning',
     subtitle: 'Scan Instagram & Twitter posts directly',
@@ -216,7 +216,7 @@ export default function FeaturesPage() {
                 </p>
                 {f.bullets.map((b, bi) => (
                   <div key={bi} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-                    <span style={{ color: f.color, fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>✓</span>
+                    <span style={{ color: f.color, flexShrink: 0, marginTop: 1 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                     <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>{b}</span>
                   </div>
                 ))}

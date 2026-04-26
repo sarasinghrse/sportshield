@@ -6,7 +6,7 @@ import Footer from '../components/landing/Footer';
 const SECTIONS = [
   {
     id: 'articles',
-    icon: '📰',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a4 4 0 0 1-4 4zm0 0a4 4 0 0 1-4-4V6a2 2 0 0 1 2-2h2'/><line x1='16' y1='8' x2='10' y2='8'/><line x1='16' y1='12' x2='10' y2='12'/></svg>,
     title: 'Sports IP in the News',
     subtitle: 'Why this matters right now',
     articles: [
@@ -31,7 +31,7 @@ const SECTIONS = [
   },
   {
     id: 'ip',
-    icon: '🛡️',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>,
     title: 'Protecting Your Sports Media',
     subtitle: 'A practical checklist for creators',
     steps: [
@@ -45,7 +45,7 @@ const SECTIONS = [
   },
   {
     id: 'takedown',
-    icon: '📢',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M3 11l19-9-9 19-2-8-8-2z'/></svg>,
     title: 'DMCA Takedown Walkthrough',
     subtitle: 'Step-by-step: from violation to removal',
     steps: [
@@ -59,7 +59,7 @@ const SECTIONS = [
   },
   {
     id: 'licensing',
-    icon: '⚖️',
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><line x1='12' y1='3' x2='12' y2='20'/><path d='M5 6.5h14M8 20h8'/><path d='M5 6.5l-3 6a4 4 0 0 0 6 0l-3-6'/><path d='M19 6.5l-3 6a4 4 0 0 0 6 0l-3-6'/></svg>,
     title: 'Image Licensing 101',
     subtitle: 'Turn your photography into income',
     content: [

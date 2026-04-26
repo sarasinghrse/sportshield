@@ -111,7 +111,7 @@ export default function AlertsPage() {
         {/* Alert list */}
         {filtered.length === 0 ? (
           <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: 16 }}>🔔</div>
+            <div style={{ marginBottom: 16, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
             <p className="ap-subheading" style={{ marginBottom: 8 }}>No alerts</p>
             <p className="ap-muted">
               {filter === 'all'
@@ -207,7 +207,7 @@ function AlertCard({ alert }) {
           onMouseEnter={e => e.currentTarget.style.color = '#4ade80'}
           onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}
         >
-          📄 DMCA Notice
+          DMCA Notice
         </Link>
         {!alert.isRead && (
           <button

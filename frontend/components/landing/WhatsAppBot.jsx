@@ -1,6 +1,4 @@
 // components/landing/WhatsAppBot.jsx
-// Promotes the SportShield WhatsApp AI bot with a one-tap deep link.
-
 const JOIN_LINK = 'https://wa.me/14155238886?text=join%20breath-familiar';
 const WA_NUMBER = '+1 415 523 8886';
 const JOIN_WORD  = 'join breath-familiar';
@@ -11,44 +9,42 @@ const WhatsAppIcon = () => (
   </svg>
 );
 
+const CameraIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
+
+const ScanIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
+
 export default function WhatsAppBot() {
   return (
     <section style={{
       background: 'linear-gradient(135deg, #0a1210 0%, #0d1f10 60%, #0a1a0d 100%)',
       borderTop: '1px solid rgba(26,92,26,0.25)',
       borderBottom: '1px solid rgba(26,92,26,0.25)',
-      padding: '72px 24px',
+      padding: 'clamp(48px,8vw,72px) 24px',
     }}>
       <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 56, flexWrap: 'wrap' }}>
 
         {/* Left — text */}
-        <div style={{ flex: '1 1 340px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)',
-            borderRadius: 20, padding: '5px 14px', marginBottom: 20,
-          }}>
-            <span style={{ color: '#25d366', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              New — WhatsApp Bot
-            </span>
+        <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 20, padding: '5px 14px', marginBottom: 20 }}>
+            <span style={{ color: '#25d366', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>New — WhatsApp Bot</span>
           </div>
 
-          <h2 style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontWeight: 900, fontSize: 'clamp(2rem, 4vw, 2.8rem)',
-            color: '#ffffff', lineHeight: 1.1, marginBottom: 16,
-          }}>
+          <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#ffffff', lineHeight: 1.1, marginBottom: 16 }}>
             Scan from WhatsApp.<br />
             <span style={{ color: '#25d366' }}>No app needed.</span>
           </h2>
 
-          <p style={{
-            color: 'rgba(255,255,255,0.62)', fontSize: '1rem',
-            lineHeight: 1.7, marginBottom: 28, maxWidth: 420,
-          }}>
-            Send any sports photo directly to our WhatsApp bot and get back a full
-            copyright scan in under 30 seconds — match URLs, confidence scores,
-            and AI detection, all in chat.
+          <p style={{ color: 'rgba(255,255,255,0.62)', fontSize: '1rem', lineHeight: 1.7, marginBottom: 28, maxWidth: 420 }}>
+            Send any sports photo directly to our WhatsApp bot and get back a full copyright scan in under 30 seconds — match URLs, confidence scores, and AI detection, all in chat.
           </p>
 
           {/* Steps */}
@@ -59,13 +55,7 @@ export default function WhatsAppBot() {
               ['3', 'Send any photo — results arrive in ~30 sec'],
             ].map(([n, text]) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{
-                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                  background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
-                  fontSize: '0.82rem', color: '#25d366',
-                }}>
+                <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.82rem', color: '#25d366' }}>
                   {n}
                 </span>
                 <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem' }}>{text}</span>
@@ -78,15 +68,7 @@ export default function WhatsAppBot() {
             href={JOIN_LINK}
             target="_blank"
             rel="noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-              background: '#25d366', color: '#fff',
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.04em',
-              padding: '13px 28px', borderRadius: 10, textDecoration: 'none',
-              boxShadow: '0 4px 24px rgba(37,211,102,0.35)',
-              transition: 'transform 0.15s, box-shadow 0.15s',
-            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#25d366', color: '#fff', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.04em', padding: '13px 28px', borderRadius: 10, textDecoration: 'none', boxShadow: '0 4px 24px rgba(37,211,102,0.35)', transition: 'transform 0.15s, box-shadow 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(37,211,102,0.45)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(37,211,102,0.35)'; }}
           >
@@ -100,24 +82,19 @@ export default function WhatsAppBot() {
         </div>
 
         {/* Right — mock chat bubble card */}
-        <div style={{ flex: '1 1 280px', display: 'flex', justifyContent: 'center' }}>
-          <div style={{
-            background: 'rgba(13,26,16,0.9)',
-            border: '1px solid rgba(26,92,26,0.4)',
-            borderRadius: 18, padding: 24, width: '100%', maxWidth: 300,
-            boxShadow: '0 12px 48px rgba(0,0,0,0.4)',
-          }}>
+        <div style={{ flex: '1 1 260px', display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+          <div style={{ background: 'rgba(13,26,16,0.9)', border: '1px solid rgba(26,92,26,0.4)', borderRadius: 18, padding: 24, width: '100%', maxWidth: 300, boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
             {/* Chat header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid rgba(26,92,26,0.25)' }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <WhatsAppIcon />
               </div>
               <div>
                 <p style={{ color: '#fff', fontWeight: 700, fontSize: '0.88rem', margin: 0 }}>SportShield Bot</p>
-                <p style={{ color: '#25d366', fontSize: '0.72rem', margin: 0 }}>● Online</p>
+                <p style={{ color: '#25d366', fontSize: '0.72rem', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#25d366', display: 'inline-block' }} />
+                  Online
+                </p>
               </div>
             </div>
 
@@ -125,24 +102,29 @@ export default function WhatsAppBot() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {/* User sends photo */}
               <div style={{ alignSelf: 'flex-end', background: '#005c4b', borderRadius: '10px 10px 2px 10px', padding: '8px 12px', maxWidth: '80%' }}>
-                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0 }}>📷 [sports photo]</p>
+                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <CameraIcon /> sports photo
+                </p>
                 <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.64rem', margin: '4px 0 0', textAlign: 'right' }}>2:27 pm ✓✓</p>
               </div>
 
-              {/* Bot instant reply */}
+              {/* Bot scanning reply */}
               <div style={{ alignSelf: 'flex-start', background: 'rgba(26,92,26,0.35)', borderRadius: '10px 10px 10px 2px', padding: '8px 12px', maxWidth: '85%' }}>
-                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0 }}>🔍 <strong>Scanning your image...</strong><br/>Results in ~30 seconds.</p>
+                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <ScanIcon /> <strong>Scanning your image...</strong>
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', margin: '3px 0 0' }}>Results in ~30 seconds.</p>
                 <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.64rem', margin: '4px 0 0' }}>2:27 pm</p>
               </div>
 
               {/* Bot result */}
               <div style={{ alignSelf: 'flex-start', background: 'rgba(26,92,26,0.35)', borderRadius: '10px 10px 10px 2px', padding: '8px 12px', maxWidth: '85%' }}>
-                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0, lineHeight: 1.6 }}>
-                  🔍 <strong>Scan Results</strong><br/>
+                <p style={{ color: '#fff', fontSize: '0.78rem', margin: 0, lineHeight: 1.7 }}>
+                  <strong>Scan Results</strong><br/>
                   Found <strong>3 match(es)</strong><br/>
-                  🔴 91% — site1.com<br/>
-                  🟡 74% — site2.net<br/>
-                  ✅ Authentic image
+                  <span style={{ color: '#f87171' }}>&#9679;</span> 91% — site1.com<br/>
+                  <span style={{ color: '#fbbf24' }}>&#9679;</span> 74% — site2.net<br/>
+                  <span style={{ color: '#4ade80' }}>&#10003;</span> Authentic image
                 </p>
                 <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.64rem', margin: '4px 0 0' }}>2:28 pm</p>
               </div>
@@ -152,7 +134,7 @@ export default function WhatsAppBot() {
 
       </div>
 
-      {/* Manual instructions for users who can't use the link */}
+      {/* Manual instructions */}
       <div style={{ maxWidth: 900, margin: '32px auto 0', textAlign: 'center' }}>
         <p style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.78rem' }}>
           Or open WhatsApp manually → add <strong style={{ color: 'rgba(255,255,255,0.45)' }}>{WA_NUMBER}</strong> as a contact → send{' '}

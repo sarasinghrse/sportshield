@@ -70,8 +70,7 @@ export default function VerifyPage() {
           {/* Hero */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, borderRadius: '50%', background: 'rgba(26,92,26,0.2)', border: '1px solid rgba(26,92,26,0.5)', fontSize: '2.2rem', marginBottom: 22 }}>
-              🔍
-            </div>
+                          </div>
             <h1 className="ap-heading" style={{ marginBottom: 12, fontSize: 'clamp(1.8rem,5vw,2.6rem)' }}>Verify a URL</h1>
             <p className="ap-muted" style={{ maxWidth: 440, margin: '0 auto', fontSize: '0.95rem', lineHeight: 1.75 }}>
               Check if any web URL has been flagged in the SportShield database as containing unauthorized sports media.
@@ -111,7 +110,7 @@ export default function VerifyPage() {
                   Checking…
                 </>
               ) : (
-                <>🔍 Check This URL</>
+                <>Check This URL</>
               )}
             </button>
           </div>
@@ -119,7 +118,7 @@ export default function VerifyPage() {
           {/* Results */}
           {result === 'clean' && (
             <div className="ap-card" style={{ padding: '32px 28px', textAlign: 'center', border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.05)' }}>
-              <div style={{ fontSize: '2.8rem', marginBottom: 14 }}>✅</div>
+              <div style={{ marginBottom: 14, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
               <p style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.4rem', color: '#4ade80', marginBottom: 10 }}>Not Flagged</p>
               <p className="ap-muted">This URL is not in our database of unauthorized media uses.</p>
               <p className="ap-muted" style={{ marginTop: 8, fontSize: '0.78rem' }}>
@@ -132,7 +131,7 @@ export default function VerifyPage() {
             <div className="ap-card" style={{ padding: '28px 24px', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.05)' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: 22 }}>
-                <div style={{ fontSize: '2.8rem', marginBottom: 12 }}>🚨</div>
+                <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                 <p style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.4rem', color: '#f87171', marginBottom: 8 }}>
                   Flagged as Unauthorized
                 </p>
@@ -166,12 +165,12 @@ export default function VerifyPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     marginBottom: 12, transition: 'background 0.2s',
                   }}>
-                  {reporting ? 'Sending notice…' : '📨 Alert Site Owner (Auto DMCA)'}
+                  {reporting ? 'Sending notice…' : 'Alert Site Owner (Auto DMCA)'}
                 </button>
               ) : (
                 <div style={{ width: '100%', padding: '13px', borderRadius: 10, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', textAlign: 'center', marginBottom: 12 }}>
                   <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', color: '#4ade80' }}>
-                    ✅ DMCA notice sent to site owner
+                    DMCA notice sent to site owner
                   </p>
                 </div>
               )}
@@ -198,9 +197,9 @@ export default function VerifyPage() {
           {/* Use cases */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginTop: 36 }}>
             {[
-              { icon: '⚖️', title: 'Rights holders', desc: 'Check if your content is being used without permission anywhere on the web.' },
-              { icon: '📰', title: 'Journalists',    desc: 'Verify an image\'s legitimacy before publishing in your article or report.' },
-              { icon: '🏟️', title: 'Sports clubs',   desc: 'Monitor if your official photography is being reused on unofficial sites.' },
+              { icon: null, title: 'Rights holders', desc: 'Check if your content is being used without permission anywhere on the web.' },
+              { icon: null, title: 'Journalists',    desc: 'Verify an image\'s legitimacy before publishing in your article or report.' },
+              { icon: null, title: 'Sports clubs',   desc: 'Monitor if your official photography is being reused on unofficial sites.' },
             ].map(u => (
               <div key={u.title} className="ap-card" style={{ padding: '18px 16px' }}>
                 <div style={{ fontSize: '1.4rem', marginBottom: 8 }}>{u.icon}</div>

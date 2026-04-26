@@ -106,7 +106,7 @@ export default function PublicDashboard() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: 16 }}>🏟️</div>
+            <div style={{ marginBottom: 16, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 21V3M16 21V3M2 12h20"/></svg></div>
             <p className="ap-subheading" style={{ marginBottom: 8 }}>No assets here yet</p>
             <p className="ap-muted" style={{ marginBottom: 24 }}>Be the first to protect your sports media publicly.</p>
             <Link href="/signup" className="ap-btn ap-btn-green">Start Protecting Free →</Link>
@@ -133,18 +133,18 @@ export default function PublicDashboard() {
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
-                        {asset.type === 'video' ? '🎬' : '🖼️'}
+                        {asset.type === 'video' ? 'Video' : 'Image'}
                       </div>
                     )}
                     {/* Violation badge overlay */}
                     {violations > 0 && (
                       <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.75rem' }}>
-                        ⚠ {violations} violation{violations !== 1 ? 's' : ''}
+                        ! {violations} violation{violations !== 1 ? 's' : ''}
                       </div>
                     )}
                     {violations === 0 && (
                       <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(74,222,128,0.85)', color: '#081008', borderRadius: 20, padding: '3px 10px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.75rem' }}>
-                        ✓ Clean
+                        Clean
                       </div>
                     )}
                   </div>
