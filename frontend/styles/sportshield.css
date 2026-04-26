@@ -168,6 +168,7 @@ body {
   padding: 9px 20px !important;
   border-radius: 6px !important;
   letter-spacing: 0.02em;
+  white-space: nowrap;
   transition: background 0.2s !important;
 }
 .ss-btn-signup:hover { background: var(--green-600) !important; }
@@ -178,6 +179,7 @@ body {
   font-weight: 600 !important;
   padding: 7px 20px !important;
   border-radius: 6px !important;
+  white-space: nowrap;
   transition: border-color 0.2s, color 0.2s !important;
 }
 .ss-btn-login:hover {
@@ -1294,11 +1296,26 @@ body {
 
 /* ── Tablet landscape (901px – 1024px) ───────────────────── */
 @media (max-width: 1024px) and (min-width: 901px) {
-  .ss-nav { padding: 0 24px; }
-  .ss-nav-links li a, .ss-nav-links li button { font-size: 0.82rem; }
+  .ss-nav { padding: 0 20px; }
+  .ss-nav-links { gap: 2px; }
+  .ss-nav-links li a, .ss-nav-links li button { font-size: 0.82rem; padding: 7px 10px; }
+  .ss-btn-signup { padding: 8px 14px !important; font-size: 0.82rem; }
+  .ss-btn-login  { padding: 6px 14px !important; font-size: 0.82rem; }
+  .ss-nav-logo-text { font-size: 1.1rem; }
   .ss-section { padding: 64px 24px; }
   .ss-import, .ss-monitor, .ss-action { gap: 32px; }
   .ss-hero-inner { gap: 40px; }
+}
+
+/* ── Mid-range squeeze (901px – 1100px) ──────────────────── */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .ss-nav { padding: 0 16px; }
+  .ss-nav-links { gap: 0; }
+  .ss-nav-links li a, .ss-nav-links li button { font-size: 0.8rem; padding: 7px 8px; }
+  .ss-nav-actions { gap: 6px; }
+  .ss-btn-signup { padding: 7px 12px !important; font-size: 0.8rem; }
+  .ss-btn-login  { padding: 5px 12px !important; font-size: 0.8rem; }
+  .ss-nav-logo-text { font-size: 1rem; }
 }
 
 /* ── Tablet (641px – 900px) ──────────────────────────────── */
