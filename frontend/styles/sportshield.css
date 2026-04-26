@@ -100,6 +100,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
   transition: color 0.2s, background 0.2s;
 }
 

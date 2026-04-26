@@ -58,9 +58,9 @@ export default function AboutPage() {
             Built to solve a real problem
           </h2>
           <p className="ap-muted" style={{ fontSize: '1rem', lineHeight: 1.85, marginBottom: 20 }}>
-            SportShield was created by <strong style={{ color: '#fff' }}>Sara</strong> (full-stack web),{' '}
-            <strong style={{ color: '#fff' }}>Anshu</strong> (Flutter/mobile), and{' '}
-            <strong style={{ color: '#fff' }}>Amit</strong> (backend & AI) as a Google Solutions Challenge 2026 submission.
+            SportShield was created by <strong style={{ color: '#fff' }}>Sara</strong> ,{' '}
+            <strong style={{ color: '#fff' }}>Anshu</strong> , and{' '}
+            <strong style={{ color: '#fff' }}>Amit</strong> as a Google Solutions Challenge 2026 submission.
             We set out to solve a real problem faced by sports photographers, video creators, and clubs worldwide —
             unauthorized use of their media content with no easy way to detect or act on it.
           </p>
