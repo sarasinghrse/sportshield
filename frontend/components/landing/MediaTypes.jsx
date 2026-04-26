@@ -15,7 +15,7 @@ export default function MediaTypes() {
   return (
     <section className="ss-section ss-media-types">
       <div className="ss-max">
-        <div style={{ display: 'flex', gap: 80, alignItems: 'flex-start' }}>
+        <div className="ss-media-types-layout">
           {/* Left: type list */}
           <div style={{ flex: 1 }}>
             <div className="ss-media-list">

@@ -582,6 +582,12 @@ body {
   padding: 80px 40px;
 }
 
+.ss-media-types-layout {
+  display: flex;
+  gap: 80px;
+  align-items: flex-start;
+}
+
 .ss-media-list {
   margin-top: 32px;
 }
@@ -1336,6 +1342,10 @@ body {
   /* Action visual */
   .ss-action-visual { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
   .ss-action-img.tall { grid-row: span 1; }
+
+  /* Media types — stack vertically */
+  .ss-media-types-layout { flex-direction: column; gap: 40px; }
+  .ss-media-types { padding: 60px 20px; }
 
   /* App pages */
   .ap-nav { padding: 0 20px; }

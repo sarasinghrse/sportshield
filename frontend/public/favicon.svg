@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg  { fill: none; }
+    .sh  { fill: #2d8f2d; }
+    .txt { fill: #ffffff; font-family: 'Arial Black', Arial, sans-serif; font-weight: 900; font-size: 11px; }
+    @media (prefers-color-scheme: light) {
+      .sh  { fill: #145214; }
+      .txt { fill: #ffffff; }
+    }
+  </style>
+  <!-- Shield shape -->
+  <path class="sh" d="M16 2 L28 7 L28 17 C28 23.5 22.5 28.5 16 31 C9.5 28.5 4 23.5 4 17 L4 7 Z"/>
+  <!-- SS text -->
+  <text class="txt" x="16" y="21" text-anchor="middle">SS</text>
+</svg>
