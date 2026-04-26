@@ -80,7 +80,7 @@ def scan_and_reply(to: str, image_url: str, image_bytes: bytes):
 
     try:
         # 1. Upload to Cloudinary for a stable CDN URL
-        cdn_url = upload_file(image_bytes, resource_type="image")
+        cdn_url = upload_file(image_bytes, asset_id=asset_id, user_id=user_id, resource_type="image")
 
         # 2. Compute pHash fingerprint
         phash = compute_phash(image_bytes)
