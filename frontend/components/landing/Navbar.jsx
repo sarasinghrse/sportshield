@@ -53,7 +53,7 @@ export default function Navbar() {
         {/* Desktop Nav Links */}
         <ul className="ss-nav-links">
           <li>
-            <button type="button">Features ▾</button>
+            <Link href="/features">Features ▾</Link>
             <div className="ss-dropdown">
               {featuresMenu.map(item => (
                 <Link key={item.label} href={item.href} className="ss-dropdown-item">
@@ -79,7 +79,7 @@ export default function Navbar() {
           </li>
 
           <li>
-            <button type="button">Resources ▾</button>
+            <Link href="/resources">Resources ▾</Link>
             <div className="ss-dropdown">
               {resourcesMenu.map(item => (
                 <Link key={item.label} href={item.href} className="ss-dropdown-item">
