@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import toast, { Toaster } from 'react-hot-toast';
 import { db, subscribeToAlerts, markAlertRead } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import ProfileAvatar from '../components/ProfileAvatar';
 
 const TAKEDOWN_STATUSES = [
   { value: 'none',         label: 'No Action' },
@@ -75,6 +76,7 @@ export default function AlertsPage() {
               {markingAll ? 'Marking…' : 'Mark all read'}
             </button>
           )}
+          <ProfileAvatar />
         </div>
       </nav>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { subDays, startOfDay, format } from 'date-fns';
 import {
   LineChart, Line, BarChart, Bar,
@@ -78,6 +79,9 @@ export default function AnalyticsPage() {
             <span className="ap-logo-text">SPORTSHIELD</span>
           </Link>
           <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Analytics</span>
+        </div>
+        <div className="ap-nav-right">
+          <ProfileAvatar />
         </div>
       </nav>
 

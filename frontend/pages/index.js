@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { subscribeToAssets, subscribeToAlerts, markAlertRead } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
+import ProfileAvatar from '../components/ProfileAvatar';
 
 /* ── shared dark-green design tokens (mirrors sportshield.css) ── */
 const C = {
@@ -172,6 +173,7 @@ export default function Dashboard() {
             <Link href="/analytics" className="db-nav-link">Analytics</Link>
             <Link href="/settings"  className="db-nav-link">Settings</Link>
             <Link href="/upload"    className="db-upload-btn" style={{ marginLeft: 8 }}>+ Upload</Link>
+            <ProfileAvatar />
             <Link href="/alerts"    className="db-bell" style={{ marginLeft: 14 }}>
               &#128276;
               {unread > 0 && (

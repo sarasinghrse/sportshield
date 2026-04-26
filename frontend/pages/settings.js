@@ -1,18 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../lib/useAuth';
+import ProfileAvatar from '../components/ProfileAvatar';
 import toast, { Toaster } from 'react-hot-toast';
 
+/* ── helpers ───────────────────────────────────────────────────── */
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label style={{
+        display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)',
+        fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8,
+      }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/* Compress + convert image file to small base64 for Firestore storage */
+function compressImage(file, maxPx = 160) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── page ───────────────────────────────────────────────────────── */
 export default function SettingsPage() {
   const { user, profile, loading } = useAuth();
-  const router = useRouter();
-  const [orgName,   setOrgName]   = useState('');
-  const [threshold, setThreshold] = useState(75);
-  const [saving,    setSaving]    = useState(false);
+  const router   = useRouter();
+  const fileRef  = useRef(null);
+
+  const [displayName,   setDisplayName]   = useState('');
+  const [gender,        setGender]        = useState('');
+  const [phone,         setPhone]         = useState('');
+  const [emailUpdates,  setEmailUpdates]  = useState(false);
+  const [threshold,     setThreshold]     = useState(75);
+  const [profilePic,    setProfilePic]    = useState(null);
+  const [saving,        setSaving]        = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -20,28 +63,51 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (profile) {
-      setOrgName(profile.orgName || '');
+      setDisplayName(profile.displayName || '');
+      setGender(profile.gender || '');
+      setPhone(profile.phone || '');
+      setEmailUpdates(profile.emailUpdates ?? false);
       setThreshold(profile.settings?.confidenceThreshold ?? 75);
+      setProfilePic(profile.profilePic || null);
     }
   }, [profile]);
 
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const b64 = await compressImage(file, 160);
+      setProfilePic(b64);
+    } catch {
+      toast.error('Could not process image.');
+    }
+  };
+
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
     try {
       await setDoc(
         doc(db, 'users', user.uid),
-        { orgName, settings: { confidenceThreshold: threshold } },
+        {
+          displayName,
+          gender,
+          phone,
+          emailUpdates,
+          profilePic: profilePic || null,
+          settings: { confidenceThreshold: threshold },
+        },
         { merge: true }
       );
-      toast.success('Settings saved!');
-    } catch {
-      toast.error('Failed to save.');
+      toast.success('Profile saved!');
+    } catch (err) {
+      toast.error('Save failed — ' + err.message);
     } finally { setSaving(false); }
   };
 
   const handleSignOut = async () => {
     await signOut(auth);
-    router.push('/login');
+    router.push('/landing');
   };
 
   if (loading) return (
@@ -52,7 +118,9 @@ export default function SettingsPage() {
 
   return (
     <div className="ap-root">
-      <Toaster position="top-right" toastOptions={{ style: { background: '#0d1f10', color: '#fff', border: '1px solid rgba(26,92,26,0.4)' } }} />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#0d1f10', color: '#fff', border: '1px solid rgba(26,92,26,0.4)' },
+      }} />
 
       <nav className="ap-nav">
         <div className="ap-nav-left">
@@ -64,41 +132,140 @@ export default function SettingsPage() {
           </Link>
           <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Settings</span>
         </div>
+        <div className="ap-nav-right">
+          <ProfileAvatar />
+        </div>
       </nav>
 
-      <main style={{ maxWidth: 640, margin: '0 auto', padding: '32px 24px' }}>
+      <main style={{ maxWidth: 660, margin: '0 auto', padding: '32px 24px' }}>
         <h1 className="ap-heading" style={{ marginBottom: 28 }}>Settings</h1>
 
-        {/* Profile */}
+        {/* Profile Photo */}
         <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 18 }}>
-          <p className="ap-section-title" style={{ marginBottom: 20 }}>Profile</p>
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Organisation / Name
-            </label>
-            <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)}
-              className="ap-input" placeholder="Your team or name" />
-          </div>
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Email
-            </label>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem', padding: '8px 0' }}>{user?.email}</p>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Account Type
-            </label>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem', padding: '8px 0', textTransform: 'capitalize' }}>
-              {profile?.accountType || '—'}
-            </p>
+          <p className="ap-section-title" style={{ marginBottom: 20 }}>Profile Photo</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div
+              onClick={() => fileRef.current?.click()}
+              style={{
+                width: 80, height: 80, borderRadius: '50%', overflow: 'hidden',
+                border: '2px solid rgba(74,222,128,0.5)', cursor: 'pointer',
+                background: 'rgba(26,92,26,0.3)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexShrink: 0,
+              }}
+              title="Click to change photo"
+            >
+              {profilePic ? (
+                <img src={profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.6)" strokeWidth="1.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              )}
+            </div>
+            <div>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="ap-btn ap-btn-ghost"
+                style={{ fontSize: '0.82rem', padding: '8px 18px', marginBottom: 6 }}
+              >
+                Upload Photo
+              </button>
+              <p className="ap-muted" style={{ fontSize: '0.72rem' }}>
+                JPG or PNG · compressed to thumbnail size
+              </p>
+              <input ref={fileRef} type="file" accept="image/*"
+                style={{ display: 'none' }} onChange={handlePhotoChange} />
+            </div>
           </div>
         </div>
 
-        {/* Detection sensitivity */}
+        {/* Personal Details */}
+        <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 18 }}>
+          <p className="ap-section-title" style={{ marginBottom: 20 }}>Personal Details</p>
+
+          <Field label="Full Name">
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+              className="ap-input" placeholder="Your full name" />
+          </Field>
+
+          <Field label="Email Address">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="email" value={user?.email || ''} readOnly
+                className="ap-input" style={{ opacity: 0.55, cursor: 'not-allowed', flex: 1 }} />
+              <span style={{ fontSize: '0.72rem', color: 'rgba(74,222,128,0.7)', whiteSpace: 'nowrap' }}>
+                via Firebase Auth
+              </span>
+            </div>
+          </Field>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Field label="Gender">
+              <select value={gender} onChange={e => setGender(e.target.value)}
+                className="ap-input" style={{ cursor: 'pointer' }}>
+                <option value="">Prefer not to say</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="nonbinary">Non-binary</option>
+                <option value="other">Other</option>
+              </select>
+            </Field>
+
+            <Field label="Phone Number">
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                className="ap-input" placeholder="+91 98765 43210" />
+            </Field>
+          </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 18 }}>
+          <p className="ap-section-title" style={{ marginBottom: 20 }}>Notifications</p>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div>
+              <p style={{ color: 'rgba(255,255,255,0.82)', fontWeight: 600, fontSize: '0.88rem', marginBottom: 3 }}>
+                Email Updates
+              </p>
+              <p className="ap-muted" style={{ fontSize: '0.76rem' }}>
+                Receive match alerts and scan summaries directly in your inbox
+              </p>
+            </div>
+            <button
+              onClick={() => setEmailUpdates(v => !v)}
+              style={{
+                width: 48, height: 26, borderRadius: 13, border: 'none',
+                background: emailUpdates ? '#4ade80' : 'rgba(255,255,255,0.15)',
+                position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+              }}
+              aria-label="Toggle email updates"
+            >
+              <span style={{
+                position: 'absolute', top: 3,
+                left: emailUpdates ? 25 : 3,
+                width: 20, height: 20, borderRadius: '50%',
+                background: emailUpdates ? '#0a1210' : 'rgba(255,255,255,0.6)',
+                transition: 'left 0.2s', display: 'block',
+              }} />
+            </button>
+          </div>
+
+          {emailUpdates && (
+            <div style={{
+              background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)',
+              borderRadius: 8, padding: '10px 14px',
+            }}>
+              <p style={{ fontSize: '0.78rem', color: 'rgba(74,222,128,0.85)' }}>
+                ✓ Alerts will be sent to <strong>{user?.email}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Detection Sensitivity */}
         <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 24 }}>
           <p className="ap-section-title" style={{ marginBottom: 6 }}>Detection Sensitivity</p>
-          <p className="ap-muted" style={{ marginBottom: 22 }}>
+          <p className="ap-muted" style={{ marginBottom: 22, fontSize: '0.8rem' }}>
             Only flag matches above this confidence level. Lower = more alerts. Higher = fewer but more certain.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
@@ -123,8 +290,9 @@ export default function SettingsPage() {
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
           <button onClick={handleSignOut}
-            className="ap-btn ap-btn-ghost" style={{ padding: '10px 22px' }}>
-            Sign Out
+            className="ap-btn ap-btn-ghost"
+            style={{ padding: '10px 22px', color: 'rgba(248,113,113,0.8)', borderColor: 'rgba(248,113,113,0.2)' }}>
+            Log Out
           </button>
         </div>
       </main>
