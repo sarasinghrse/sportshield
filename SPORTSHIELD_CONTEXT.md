@@ -93,6 +93,10 @@ Mounts 5 routers under `/api/`:
 | `domain_classifier.py` | S15 | Trusted-domain → authorized/unauthorized |
 | `email_alerts.py` | S16 | Brevo SMTP HTML email alerts |
 | `scheduler.py` | — | Legacy APScheduler init |
+| **`pdq_hasher.py`** | **P1** | **Meta PDQ 256-bit perceptual hash (replaces imagehash)** |
+| **`clip_search.py`** | **P1** | **CLIP+Qdrant semantic vector search (512-dim embeddings)** |
+| **`forensic_watermark.py`** | **P1** | **DWT-DCT-SVD forensic watermark (replaces LSB)** |
+| **`c2pa_credentials.py`** | **P1** | **C2PA Content Credentials signing & verification** |
 
 ### Key Endpoints in `routers/media.py`
 - `POST /upload` — handles image/video/audio, runs all detection in parallel threads

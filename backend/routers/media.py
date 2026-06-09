@@ -4,6 +4,10 @@ from pydantic import BaseModel
 from services.firebase_client import db
 from services.cloudinary_client import upload_file
 from services.fingerprint import compute_phash
+from services.pdq_hasher import compute_pdq, compare_pdq
+from services.clip_search import index_asset as clip_index, search_similar as clip_search, text_search as clip_text_search, get_collection_stats as clip_stats
+from services.forensic_watermark import embed_forensic_watermark, extract_forensic_watermark
+from services.c2pa_credentials import sign_asset as c2pa_sign, verify_asset as c2pa_verify, get_credential_summary
 from services.crawler import scan_asset, scrape_social_image
 from services.ai_detector import detect_ai_image
 from services.watermark import apply_visible_watermark
@@ -19,6 +23,17 @@ from services.blockchain_timestamp import create_ownership_proof, verify_ownersh
 from services.scheduled_scanner import schedule_asset_rescan, unschedule_asset_rescan, get_scheduled_jobs, start_scheduler
 from services.licensing import create_license, check_license_status, verify_usage, LICENSE_TYPES
 from services.email_alerts import send_scan_alert, send_dmca_confirmation
+from services.radar_engine import (
+    create_event as radar_create_event,
+    get_event as radar_get_event,
+    list_events as radar_list_events,
+    ingest_reference as radar_ingest_reference,
+    analyze_suspect as radar_analyze_suspect,
+    get_detections as radar_get_detections,
+    get_suspect as radar_get_suspect,
+    get_radar_stats,
+    stop_event as radar_stop_event,
+)
 from config import SERPAPI_KEY, HF_TOKEN
 import uuid
 import threading
@@ -208,10 +223,15 @@ async def upload_media(file: UploadFile = File(...)):
     original_url = upload_file(file_bytes, asset_id, user_id, cloudinary_type)
 
     phash = ""
+    pdq_data = None
     watermarked_url = ""
     invisible_wm_url = ""
+    forensic_wm_url = ""
+    forensic_wm_meta = None
     video_fingerprint = None
     music_analysis = None
+    c2pa_data = None
+    clip_data = None
 
     # S13: Music detection for audio and video files
     if resource_type in ("audio", "video"):
@@ -223,7 +243,23 @@ async def upload_media(file: UploadFile = File(...)):
 
     if resource_type == "image":
         phash = compute_phash(file_bytes)
-        # Visible watermark
+
+        # ── Phase 1: Meta PDQ hash (production-grade, replaces pHash as primary) ──
+        try:
+            pdq_data = compute_pdq(file_bytes)
+            print(f"[pdq] Hash: {pdq_data['hash'][:16]}... quality={pdq_data['quality']}")
+        except Exception as e:
+            print(f"[pdq] Failed: {e}")
+
+        # ── Phase 1: CLIP vector indexing (semantic search) ──
+        try:
+            clip_data = clip_index(asset_id, user_id, file_bytes, file.filename or "")
+            if clip_data.get("indexed"):
+                print(f"[clip] Indexed {clip_data['dimensions']}-dim vector")
+        except Exception as e:
+            print(f"[clip] Indexing failed: {e}")
+
+        # Visible watermark (existing S2)
         try:
             wm_bytes = apply_visible_watermark(
                 file_bytes,
@@ -234,13 +270,28 @@ async def upload_media(file: UploadFile = File(...)):
             watermarked_url = upload_file(wm_bytes, f"{asset_id}_wm", user_id, "image")
         except Exception as e:
             print(f"[watermark] could not generate watermarked copy: {e}")
-        # S5: Invisible watermark (LSB steganography)
+
+        # S5: Invisible watermark (LSB steganography — kept as fallback)
         try:
             inv_bytes = embed_watermark(file_bytes, user_id=user_id, asset_id=asset_id)
             invisible_wm_url = upload_file(inv_bytes, f"{asset_id}_inv", user_id, "image")
-            print(f"[invisible_wm] Embedded for asset {asset_id[:8]}")
+            print(f"[invisible_wm] LSB embedded for asset {asset_id[:8]}")
         except Exception as e:
             print(f"[invisible_wm] Failed: {e}")
+
+        # ── Phase 1: DCT forensic watermark (survives re-compression/screenshots) ──
+        try:
+            fw_result = embed_forensic_watermark(
+                file_bytes, user_id=user_id, asset_id=asset_id,
+                session_id=asset_id,
+            )
+            fw_bytes = fw_result.pop("watermarked_bytes")
+            forensic_wm_url = upload_file(fw_bytes, f"{asset_id}_fwm", user_id, "image")
+            forensic_wm_meta = fw_result
+            print(f"[forensic_wm] DCT embedded: {fw_result['bits_embedded']} bits, session={fw_result['session_id'][:8]}")
+        except Exception as e:
+            print(f"[forensic_wm] Failed: {e}")
+
     elif resource_type == "video":
         try:
             video_fingerprint = compute_video_fingerprint(file_bytes, max_frames=12)
@@ -249,12 +300,37 @@ async def upload_media(file: UploadFile = File(...)):
         except Exception as e:
             print(f"[video] Fingerprinting failed: {e}")
 
+    # ── Phase 1: C2PA Content Credential signing ──
+    if resource_type == "image":
+        try:
+            c2pa_result = c2pa_sign(
+                file_bytes, user_id, asset_id,
+                file.filename or "", file.content_type or "image/png",
+            )
+            if c2pa_result.get("signed"):
+                c2pa_signed_bytes = c2pa_result.pop("manifest_bytes")
+                c2pa_url = upload_file(c2pa_signed_bytes, f"{asset_id}_c2pa", user_id, "image")
+                c2pa_data = {
+                    "signed": True,
+                    "c2paUrl": c2pa_url,
+                    "claimGenerator": c2pa_result.get("claim_generator"),
+                    "signedAt": c2pa_result.get("signed_at"),
+                    "algorithm": c2pa_result.get("algorithm"),
+                    "standard": c2pa_result.get("standard"),
+                }
+                print(f"[c2pa] Content Credential signed: {c2pa_data['algorithm']}")
+            else:
+                print(f"[c2pa] Signing skipped: {c2pa_result.get('error', 'unknown')}")
+        except Exception as e:
+            print(f"[c2pa] Failed: {e}")
+
     asset_doc = {
         "userId":           user_id,
         "filename":         file.filename,
         "originalUrl":      original_url,
         "watermarkedUrl":   watermarked_url,
         "invisibleWmUrl":   invisible_wm_url,
+        "forensicWmUrl":    forensic_wm_url,
         "type":             resource_type,
         "phash":            phash,
         "uploadedAt":       datetime.now(timezone.utc),
@@ -263,12 +339,20 @@ async def upload_media(file: UploadFile = File(...)):
         "matchCount":     0,
         "source":         "upload",
     }
+    if pdq_data:
+        asset_doc["pdqHash"] = pdq_data
+    if clip_data:
+        asset_doc["clipIndex"] = clip_data
+    if forensic_wm_meta:
+        asset_doc["forensicWatermark"] = forensic_wm_meta
+    if c2pa_data:
+        asset_doc["c2pa"] = c2pa_data
     if video_fingerprint:
         asset_doc["videoFingerprint"] = video_fingerprint
     if music_analysis:
         asset_doc["musicAnalysis"] = music_analysis
 
-    # S11: Create ownership proof on upload
+    # S11: Create ownership proof on upload (legacy — now supplemented by C2PA)
     try:
         proof = create_ownership_proof(file_bytes, asset_id, user_id, file.filename or "", phash)
         asset_doc["ownershipProof"] = proof
@@ -1083,3 +1167,448 @@ async def send_test_alert(user_id: str = "demo_user"):
         risk_score=65,
     )
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PHASE 1 — PRODUCTION-GRADE UPGRADES
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ── Meta PDQ Hashing ──────────────────────────────────────────────────────
+
+@router.get("/pdq/{asset_id}")
+async def get_pdq_hash(asset_id: str):
+    """Get the Meta PDQ hash for an asset."""
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    pdq = asset.get("pdqHash")
+    if not pdq:
+        raise HTTPException(status_code=404, detail="No PDQ hash — re-upload to generate")
+    return pdq
+
+
+@router.post("/pdq-compare/{asset_id}")
+async def compare_pdq_hashes(asset_id: str, file: UploadFile = File(...)):
+    """
+    Compare an uploaded image against an asset's PDQ hash.
+    Uses Meta's production thresholds: ≤31 = near-duplicate, ≤63 = similar.
+    """
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    pdq = asset.get("pdqHash")
+    if not pdq or not pdq.get("hash"):
+        raise HTTPException(status_code=404, detail="No PDQ hash on this asset")
+
+    file_bytes = await file.read()
+    try:
+        uploaded_pdq = compute_pdq(file_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not hash uploaded image: {e}")
+
+    result = compare_pdq(pdq["hash"], uploaded_pdq["hash"])
+    result["asset_hash"] = pdq["hash"]
+    result["uploaded_hash"] = uploaded_pdq["hash"]
+    return result
+
+
+# ── CLIP Semantic Vector Search ──────────────────────────────────────────
+
+@router.post("/clip-search")
+async def search_by_image(file: UploadFile = File(...), top_k: int = Query(10)):
+    """
+    Semantic image search using CLIP embeddings.
+    Upload an image → find visually similar assets (catches crops, recolors,
+    memes, AI-upscaled copies that pHash/PDQ miss).
+    """
+    file_bytes = await file.read()
+    results = clip_search(file_bytes, user_id="demo_user", top_k=top_k)
+    return {"matches": results, "count": len(results), "engine": "CLIP+Qdrant"}
+
+
+class TextSearchRequest(BaseModel):
+    query: str
+    top_k: int = 10
+
+
+@router.post("/clip-text-search")
+async def search_by_text(req: TextSearchRequest):
+    """
+    Text-to-image search using CLIP's multimodal capability.
+    E.g. "player celebrating goal" → finds matching images.
+    """
+    results = clip_text_search(req.query, user_id="demo_user", top_k=req.top_k)
+    return {"query": req.query, "matches": results, "count": len(results)}
+
+
+@router.get("/clip-stats")
+async def get_clip_stats():
+    """Get CLIP vector index statistics."""
+    return clip_stats()
+
+
+# ── Forensic Watermark (DCT/DWT) ────────────────────────────────────────
+
+@router.post("/forensic-watermark/{asset_id}")
+async def apply_forensic_wm(asset_id: str):
+    """
+    Embed a forensic (DCT/DWT-SVD) watermark into an asset.
+    Unlike LSB, this survives JPEG re-compression, screenshots,
+    and social media re-encoding. Encodes user + session + timestamp.
+    """
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    if asset.get("type") != "image":
+        raise HTTPException(status_code=400, detail="Only images support forensic watermarking")
+
+    original_url = asset.get("originalUrl", "")
+    if not original_url:
+        raise HTTPException(status_code=404, detail="No original image URL")
+
+    try:
+        resp = httpx.get(original_url, timeout=20, follow_redirects=True)
+        resp.raise_for_status()
+        image_bytes = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
+
+    user_id = asset.get("userId", "demo_user")
+    fw_result = embed_forensic_watermark(image_bytes, user_id=user_id, asset_id=asset_id, session_id=asset_id)
+    fw_bytes = fw_result.pop("watermarked_bytes")
+    fw_url = upload_file(fw_bytes, f"{asset_id}_fwm", user_id, "image")
+
+    db.collection("assets").document(asset_id).update({
+        "forensicWmUrl": fw_url,
+        "forensicWatermark": fw_result,
+    })
+
+    return {
+        "assetId": asset_id,
+        "forensicWmUrl": fw_url,
+        "algorithm": fw_result["algorithm"],
+        "bitsEmbedded": fw_result["bits_embedded"],
+        "sessionId": fw_result["session_id"],
+        "message": "DCT forensic watermark embedded — survives re-compression & screenshots",
+    }
+
+
+@router.post("/extract-forensic-watermark")
+async def extract_forensic_wm(file: UploadFile = File(...), expected_bits: int = Query(0)):
+    """
+    Extract forensic watermark from an uploaded image.
+    Identifies the exact leaker/session even from a screenshot or re-compressed copy.
+    Pass expected_bits (from asset metadata) for best accuracy.
+    """
+    file_bytes = await file.read()
+    result = extract_forensic_watermark(file_bytes, expected_bits=expected_bits)
+    return result
+
+
+@router.get("/extract-forensic-watermark/{asset_id}")
+async def extract_forensic_wm_from_asset(asset_id: str):
+    """
+    Extract forensic watermark from an asset's watermarked copy.
+    Verifies the watermark is intact and readable.
+    """
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    fw_url = asset.get("forensicWmUrl", "")
+    if not fw_url:
+        raise HTTPException(status_code=404, detail="No forensic watermark exists for this asset")
+
+    try:
+        resp = httpx.get(fw_url, timeout=20, follow_redirects=True)
+        resp.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch watermarked image: {e}")
+
+    expected_bits = asset.get("forensicWatermark", {}).get("bits_embedded", 0)
+    result = extract_forensic_watermark(resp.content, expected_bits=expected_bits)
+    return result
+
+
+# ── C2PA Content Credentials ────────────────────────────────────────────
+
+@router.get("/c2pa/{asset_id}")
+async def get_c2pa_credential(asset_id: str):
+    """Get C2PA Content Credential info for an asset."""
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    c2pa = asset.get("c2pa")
+    if not c2pa:
+        raise HTTPException(status_code=404, detail="No C2PA credential — re-upload to generate")
+    return c2pa
+
+
+@router.post("/c2pa-sign/{asset_id}")
+async def sign_with_c2pa(asset_id: str):
+    """
+    Sign an existing asset with C2PA Content Credentials.
+    Creates a cryptographically signed manifest (same standard used by
+    Adobe, BBC, Sony, Leica) that proves ownership and provenance.
+    """
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    if asset.get("type") != "image":
+        raise HTTPException(status_code=400, detail="C2PA signing currently supports images only")
+
+    original_url = asset.get("originalUrl", "")
+    if not original_url:
+        raise HTTPException(status_code=404, detail="No original image URL")
+
+    try:
+        resp = httpx.get(original_url, timeout=20, follow_redirects=True)
+        resp.raise_for_status()
+        image_bytes = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
+
+    user_id = asset.get("userId", "demo_user")
+    result = c2pa_sign(image_bytes, user_id, asset_id, asset.get("filename", ""), "image/png")
+
+    if not result.get("signed"):
+        raise HTTPException(status_code=500, detail=f"C2PA signing failed: {result.get('error')}")
+
+    signed_bytes = result.pop("manifest_bytes")
+    c2pa_url = upload_file(signed_bytes, f"{asset_id}_c2pa", user_id, "image")
+
+    c2pa_data = {
+        "signed": True,
+        "c2paUrl": c2pa_url,
+        "claimGenerator": result.get("claim_generator"),
+        "signedAt": result.get("signed_at"),
+        "algorithm": result.get("algorithm"),
+        "standard": result.get("standard"),
+    }
+    db.collection("assets").document(asset_id).update({"c2pa": c2pa_data})
+
+    return {
+        **c2pa_data,
+        "message": "C2PA Content Credential signed — verifiable at contentcredentials.org/verify",
+    }
+
+
+@router.post("/c2pa-verify")
+async def verify_c2pa(file: UploadFile = File(...)):
+    """
+    Verify C2PA Content Credentials in an uploaded file.
+    Returns provenance info: who signed it, when, integrity status.
+    Anyone can verify — this is the open standard used by 6,000+ organizations.
+    """
+    file_bytes = await file.read()
+    result = c2pa_verify(file_bytes, file.filename or "image.png")
+    summary = get_credential_summary(result)
+    return {**result, "summary": summary}
+
+
+@router.get("/c2pa-verify/{asset_id}")
+async def verify_c2pa_asset(asset_id: str):
+    """Verify C2PA credentials on an asset's signed copy."""
+    doc = db.collection("assets").document(asset_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset = doc.to_dict()
+    c2pa_url = asset.get("c2pa", {}).get("c2paUrl", "")
+    if not c2pa_url:
+        raise HTTPException(status_code=404, detail="No C2PA signed copy exists")
+
+    try:
+        resp = httpx.get(c2pa_url, timeout=20, follow_redirects=True)
+        resp.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch C2PA signed file: {e}")
+
+    result = c2pa_verify(resp.content, asset.get("filename", "image.png"))
+    summary = get_credential_summary(result)
+    return {**result, "summary": summary}
+
+
+# ── Phase 1 Info Endpoint ────────────────────────────────────────────────
+
+@router.get("/protection-stack")
+async def get_protection_stack():
+    """
+    Returns the full protection technology stack.
+    Useful for the frontend to show what technologies are active.
+    """
+    return {
+        "version": "2.0",
+        "stack": [
+            {
+                "name": "Meta PDQ",
+                "category": "hashing",
+                "description": "Production-grade perceptual hash (256-bit) used by Meta at billion-scale",
+                "replaces": "imagehash pHash",
+                "robustness": "re-compression, resize, crop, brightness/contrast",
+            },
+            {
+                "name": "CLIP + Qdrant",
+                "category": "vector_search",
+                "description": "Semantic similarity search using 512-dim CLIP embeddings",
+                "replaces": "SerpAPI-only reverse search",
+                "robustness": "crop, recolor, meme overlay, AI upscale, mirror",
+            },
+            {
+                "name": "DCT Forensic Watermark",
+                "category": "watermarking",
+                "description": "Frequency-domain (DWT-DCT-SVD) invisible watermark with per-session payload",
+                "replaces": "LSB steganography",
+                "robustness": "JPEG re-compression, screenshots, social media re-encoding, moderate crop",
+            },
+            {
+                "name": "C2PA Content Credentials",
+                "category": "provenance",
+                "description": "Industry-standard cryptographic provenance (Adobe, BBC, Sony, 6000+ orgs)",
+                "replaces": "SHA-256+HMAC blockchain proof",
+                "robustness": "Tamper-evident, court-admissible, verifiable at contentcredentials.org",
+            },
+        ],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PHASE 2 — LIVE STREAM PIRACY RADAR
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ── Radar Event Management ─────────────────────────────────────────────────
+
+class CreateEventRequest(BaseModel):
+    eventName: str
+    teams: list[str] = []
+    broadcaster: str = ""
+    league: str = ""
+
+
+@router.post("/radar/events")
+async def create_radar_event(req: CreateEventRequest, user_id: str = "demo_user"):
+    """
+    Create a monitored sports event.
+    This is the anchor — submit reference clips and suspect streams against it.
+    """
+    event = radar_create_event(
+        event_name=req.eventName,
+        teams=req.teams,
+        broadcaster=req.broadcaster,
+        league=req.league,
+        user_id=user_id,
+    )
+    return event
+
+
+@router.get("/radar/events")
+async def list_radar_events(user_id: str = "demo_user"):
+    """List all monitored events for the user."""
+    events = radar_list_events(user_id)
+    return {"events": events, "count": len(events)}
+
+
+@router.get("/radar/events/{event_id}")
+async def get_radar_event(event_id: str):
+    """Get details of a specific monitored event."""
+    event = radar_get_event(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    # Strip large fields for API response
+    resp = {k: v for k, v in event.items() if k not in ("reference_fingerprints", "reference_frame_hashes")}
+    resp["reference_clips"] = len(event.get("reference_fingerprints", []))
+    resp["reference_frames"] = len(event.get("reference_frame_hashes", []))
+    return resp
+
+
+@router.post("/radar/events/{event_id}/stop")
+async def stop_radar_event(event_id: str):
+    """Stop monitoring an event."""
+    result = radar_stop_event(event_id)
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ── Reference Ingestion ────────────────────────────────────────────────────
+
+@router.post("/radar/events/{event_id}/reference")
+async def ingest_reference_clip(event_id: str, file: UploadFile = File(...)):
+    """
+    Upload a reference clip from the official broadcast.
+    Extracts audio fingerprint + visual frame hashes as the matching baseline.
+    """
+    file_bytes = await file.read()
+    result = radar_ingest_reference(event_id, file_bytes, file.filename or "")
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ── Suspect Analysis ───────────────────────────────────────────────────────
+
+class AnalyzeSuspectRequest(BaseModel):
+    sourceUrl: str = ""
+
+
+@router.post("/radar/events/{event_id}/suspect")
+async def submit_suspect_stream(
+    event_id: str,
+    file: UploadFile = File(...),
+    source_url: str = Query(""),
+):
+    """
+    Submit a suspect stream/clip for analysis against the event's reference material.
+
+    Runs the full piracy detection pipeline:
+      1. Audio fingerprint matching (catches re-streams even with visual overlay)
+      2. Visual frame comparison (PDQ hash match)
+      3. Multimodal confirmation (scoreboard OCR + logo detection + commentary transcription)
+      4. Composite scoring → piracy verdict
+    """
+    file_bytes = await file.read()
+    result = radar_analyze_suspect(
+        event_id=event_id,
+        file_bytes=file_bytes,
+        source_url=source_url,
+        filename=file.filename or "",
+    )
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/radar/suspects/{suspect_id}")
+async def get_suspect_analysis(suspect_id: str):
+    """Get full analysis result for a specific suspect."""
+    result = radar_get_suspect(suspect_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Suspect not found")
+    return result
+
+
+# ── Detections ─────────────────────────────────────────────────────────────
+
+@router.get("/radar/detections")
+async def list_detections(event_id: str = Query(None), user_id: str = "demo_user"):
+    """List all confirmed pirate stream detections."""
+    detections = radar_get_detections(event_id=event_id, user_id=user_id)
+    return {"detections": detections, "count": len(detections)}
+
+
+# ── Radar Stats (Dashboard) ───────────────────────────────────────────────
+
+@router.get("/radar/stats")
+async def get_radar_dashboard_stats(user_id: str = "demo_user"):
+    """
+    Get radar dashboard statistics.
+    Shows active events, total suspects analyzed, pirate streams found,
+    and which detection capabilities are available.
+    """
+    return get_radar_stats(user_id)

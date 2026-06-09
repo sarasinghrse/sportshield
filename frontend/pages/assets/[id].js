@@ -930,6 +930,305 @@ export default function AssetDetail() {
           </div>
         )}
 
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* ══ PHASE 1 — PRODUCTION-GRADE PROTECTION STACK ══════════════ */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+
+        {/* ── C2PA Content Credentials Card ── */}
+        {asset.type === 'image' && (() => {
+          const c2pa = asset.c2pa;
+          const hasCred = c2pa && c2pa.signed;
+          return (
+            <div className="ap-card" style={{ padding: '20px 24px', marginBottom: 20, borderColor: hasCred ? 'rgba(96,165,250,0.25)' : undefined }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                  <div>
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                      C2PA Content Credentials
+                    </p>
+                    <p style={{ fontSize: '0.6rem', color: 'rgba(96,165,250,0.6)', marginTop: 2 }}>
+                      Adobe, BBC, Sony, Leica & 6,000+ orgs
+                    </p>
+                  </div>
+                </div>
+                {hasCred ? (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                    Signed — {c2pa.algorithm}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    Not Signed
+                  </span>
+                )}
+              </div>
+
+              {hasCred ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.12)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Standard</p>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.74rem', color: '#60a5fa' }}>{c2pa.standard || 'C2PA v2'}</code>
+                    </div>
+                    <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.12)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Signed At</p>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#60a5fa' }}>
+                        {c2pa.signedAt ? new Date(c2pa.signedAt).toLocaleString() : '—'}
+                      </code>
+                    </div>
+                  </div>
+                  <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 14 }}>
+                    <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Claim Generator</p>
+                    <code style={{ fontFamily: 'monospace', fontSize: '0.74rem', color: 'rgba(255,255,255,0.5)' }}>{c2pa.claimGenerator}</code>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'rgba(96,165,250,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                    This asset's provenance is cryptographically signed using the C2PA standard — the same technology used by Adobe Creative Cloud, BBC, Sony, and Leica cameras. Verifiable and court-admissible.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          toast.loading('Verifying C2PA credentials…', { id: 'c2pa' });
+                          const res = await fetch(`${API_URL}/api/media/c2pa-verify/${id}`);
+                          const data = await res.json();
+                          if (data.has_credentials && data.is_valid) {
+                            toast.success(`C2PA Verified — Creator: ${data.summary?.creator || 'verified'}`, { id: 'c2pa', duration: 5000 });
+                          } else {
+                            toast.error('C2PA verification failed or no credentials', { id: 'c2pa' });
+                          }
+                        } catch { toast.error('Verification failed', { id: 'c2pa' }); }
+                      }}
+                      className="ap-btn ap-btn-green" style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem' }}
+                    >
+                      Verify Credential
+                    </button>
+                    {c2pa.c2paUrl && (
+                      <a href={c2pa.c2paUrl} target="_blank" rel="noopener noreferrer"
+                        className="ap-btn ap-btn-ghost" style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem', textAlign: 'center', textDecoration: 'none' }}>
+                        Download Signed Copy
+                      </a>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 12 }}>
+                    Sign this asset with C2PA Content Credentials for cryptographic proof of ownership.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        toast.loading('Signing with C2PA…', { id: 'c2pa' });
+                        const res = await fetch(`${API_URL}/api/media/c2pa-sign/${id}`, { method: 'POST' });
+                        if (!res.ok) throw new Error();
+                        toast.success('C2PA Content Credential signed!', { id: 'c2pa' });
+                      } catch { toast.error('C2PA signing failed', { id: 'c2pa' }); }
+                    }}
+                    className="ap-btn ap-btn-green" style={{ padding: '10px 24px', fontSize: '0.82rem' }}
+                  >
+                    Sign with C2PA
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Meta PDQ Hash Card ── */}
+        {asset.type === 'image' && (() => {
+          const pdq = asset.pdqHash;
+          const hasPdq = pdq && pdq.hash;
+          return (
+            <div className="ap-card" style={{ padding: '20px 24px', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+                  </svg>
+                  <div>
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                      Meta PDQ Hash
+                    </p>
+                    <p style={{ fontSize: '0.6rem', color: 'rgba(167,139,250,0.6)', marginTop: 2 }}>
+                      Production-grade · 256-bit · Used at billion-scale by Meta
+                    </p>
+                  </div>
+                </div>
+                {hasPdq && (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
+                    Q:{pdq.quality || 0}
+                  </span>
+                )}
+              </div>
+              {hasPdq ? (
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>PDQ Hash (256-bit)</p>
+                  <code style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: 'rgba(167,139,250,0.7)', wordBreak: 'break-all', lineHeight: 1.6 }}>{pdq.hash}</code>
+                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', marginTop: 8 }}>
+                    Thresholds: ≤31 = near-duplicate · ≤63 = similar · &gt;63 = different
+                  </p>
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '10px 0' }}>
+                  PDQ hash will be generated on upload.
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── CLIP Semantic Vector Card ── */}
+        {asset.type === 'image' && (() => {
+          const clip = asset.clipIndex;
+          const hasClip = clip && clip.indexed;
+          return (
+            <div className="ap-card" style={{ padding: '20px 24px', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f472b6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <path d="M11 8v6M8 11h6"/>
+                  </svg>
+                  <div>
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                      CLIP Semantic Search
+                    </p>
+                    <p style={{ fontSize: '0.6rem', color: 'rgba(244,114,182,0.6)', marginTop: 2 }}>
+                      AI vector search · Catches crops, recolors, memes, AI edits
+                    </p>
+                  </div>
+                </div>
+                {hasClip ? (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: '#f472b6', background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.2)' }}>
+                    {clip.dimensions}D Indexed
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    Not Indexed
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginBottom: 10, lineHeight: 1.5 }}>
+                {hasClip
+                  ? `This asset's ${clip.dimensions}-dimensional CLIP embedding is stored in the Qdrant vector database. It catches visually similar content even after heavy edits — crops, recolors, meme overlays, AI upscaling, and mirrors.`
+                  : 'CLIP embedding will be generated on upload if HuggingFace API is available.'}
+              </p>
+              {hasClip && (
+                <p style={{ fontSize: '0.62rem', color: 'rgba(244,114,182,0.4)', fontStyle: 'italic' }}>
+                  Vector ID: {clip.vector_id}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Forensic Watermark (DCT) Card ── */}
+        {asset.type === 'image' && (() => {
+          const fw = asset.forensicWatermark;
+          const hasFw = fw && fw.algorithm;
+          return (
+            <div className="ap-card" style={{ padding: '20px 24px', marginBottom: 20, borderColor: hasFw ? 'rgba(251,146,60,0.25)' : undefined }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <div>
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                      Forensic Watermark
+                    </p>
+                    <p style={{ fontSize: '0.6rem', color: 'rgba(251,146,60,0.6)', marginTop: 2 }}>
+                      DWT-DCT-SVD · Survives re-compression & screenshots
+                    </p>
+                  </div>
+                </div>
+                {hasFw ? (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: '#fb923c', background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.2)' }}>
+                    {fw.bits_embedded} bits embedded
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10, color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    Not Embedded
+                  </span>
+                )}
+              </div>
+
+              {hasFw ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(251,146,60,0.05)', border: '1px solid rgba(251,146,60,0.12)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Algorithm</p>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.74rem', color: '#fb923c' }}>{fw.algorithm}</code>
+                    </div>
+                    <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(251,146,60,0.05)', border: '1px solid rgba(251,146,60,0.12)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Session</p>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#fb923c' }}>{fw.session_id?.slice(0, 8)}…</code>
+                    </div>
+                    <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(251,146,60,0.05)', border: '1px solid rgba(251,146,60,0.12)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Payload Hash</p>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#fb923c' }}>{fw.payload_hash}</code>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'rgba(251,146,60,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                    Unlike LSB steganography, this DCT-domain watermark survives JPEG re-compression, screenshots, and social media re-encoding. If a leak surfaces, extract the watermark to identify the exact session that leaked it.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          toast.loading('Extracting forensic watermark…', { id: 'fwm' });
+                          const res = await fetch(`${API_URL}/api/media/extract-forensic-watermark/${id}`);
+                          const data = await res.json();
+                          if (data.found && data.integrity_valid) {
+                            toast.success(`Watermark verified — Leaker: ${data.leaker_id || 'unknown'} | Session: ${data.session_id || 'unknown'}`, { id: 'fwm', duration: 6000 });
+                          } else if (data.found) {
+                            toast.success('Watermark found but integrity check failed', { id: 'fwm' });
+                          } else {
+                            toast.error('No forensic watermark detected', { id: 'fwm' });
+                          }
+                        } catch { toast.error('Extraction failed', { id: 'fwm' }); }
+                      }}
+                      className="ap-btn ap-btn-green" style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem' }}
+                    >
+                      Verify Watermark
+                    </button>
+                    {asset.forensicWmUrl && (
+                      <a href={asset.forensicWmUrl} target="_blank" rel="noopener noreferrer"
+                        className="ap-btn ap-btn-ghost" style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem', textAlign: 'center', textDecoration: 'none' }}>
+                        Download Protected Copy
+                      </a>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 12 }}>
+                    Embed a forensic watermark that survives re-compression and screenshots.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        toast.loading('Embedding forensic watermark…', { id: 'fwm' });
+                        const res = await fetch(`${API_URL}/api/media/forensic-watermark/${id}`, { method: 'POST' });
+                        if (!res.ok) throw new Error();
+                        toast.success('Forensic watermark embedded!', { id: 'fwm' });
+                      } catch { toast.error('Embedding failed', { id: 'fwm' }); }
+                    }}
+                    className="ap-btn ap-btn-green" style={{ padding: '10px 24px', fontSize: '0.82rem' }}
+                  >
+                    Embed Forensic Watermark
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── S11: Proof of Ownership Card ── */}
         {(() => {
           const proof = asset.ownershipProof;

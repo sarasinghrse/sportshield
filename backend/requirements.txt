@@ -10,3 +10,10 @@ python-multipart
 APScheduler==3.10.4
 twilio
 opencv-python-headless
+# Phase 1 — Production-grade upgrades
+pdqhash
+blind-watermark
+qdrant-client
+c2pa-python
+cryptography
+numpy
