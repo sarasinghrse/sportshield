@@ -58,6 +58,19 @@ export default function AnalyticsPage() {
   const dismissed       = alerts.filter(a => a.isRead).length;
   const resolutionRate  = totalViolations > 0 ? Math.round((dismissed / totalViolations) * 100) : 0;
 
+  // Estimate risk score client-side for assets that don't have it from the backend
+  const estimateRisk = (a) => {
+    if (a.riskScore != null) return a.riskScore;
+    const n = a.matchCount || 0;
+    if (n === 0) return 0;
+    const volume = n <= 2 ? n * 10 : n <= 4 ? 20 + (n - 2) * 5 : 30;
+    const ai = a.aiDetection?.is_ai ? Math.round(a.aiDetection.confidence * 15) : 0;
+    return Math.min(100, volume + 20 + (n >= 3 ? 15 : n >= 1 ? 8 : 0) + ai);
+  };
+  const avgRiskScore = assets.length > 0
+    ? Math.round(assets.reduce((s, a) => s + estimateRisk(a), 0) / assets.length)
+    : 0;
+
   const tooltipStyle = {
     backgroundColor: '#0d1f10',
     border: '1px solid rgba(26,92,26,0.4)',
@@ -94,10 +107,11 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Violations',  value: totalViolations,    accent: 'rgba(239,68,68,0.18)' },
             { label: 'Assets Monitored', value: assetsMonitored,    accent: 'rgba(26,92,26,0.28)'  },
+            { label: 'Avg Risk Score',   value: avgRiskScore,        accent: avgRiskScore >= 50 ? 'rgba(245,158,11,0.2)' : 'rgba(74,222,128,0.15)' },
             { label: 'Dismissed',         value: dismissed,           accent: 'rgba(255,255,255,0.06)' },
             { label: 'Resolution Rate',  value: `${resolutionRate}%`, accent: 'rgba(74,222,128,0.15)' },
           ].map(s => (

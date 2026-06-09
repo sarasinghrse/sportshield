@@ -56,6 +56,9 @@ export default function SettingsPage() {
   const [threshold,     setThreshold]     = useState(75);
   const [profilePic,    setProfilePic]    = useState(null);
   const [saving,        setSaving]        = useState(false);
+  const [trustedDomains, setTrustedDomains] = useState([]);
+  const [newDomain,      setNewDomain]      = useState('');
+  const [loadingDomains, setLoadingDomains] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -71,6 +74,44 @@ export default function SettingsPage() {
       setProfilePic(profile.profilePic || null);
     }
   }, [profile]);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/settings/trusted-domains`)
+      .then(r => r.json())
+      .then(data => setTrustedDomains(data.domains || []))
+      .catch(() => {})
+      .finally(() => setLoadingDomains(false));
+  }, []);
+
+  const addDomain = async () => {
+    const d = newDomain.trim();
+    if (!d) return;
+    try {
+      const res = await fetch(`${API_URL}/api/settings/trusted-domains`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: d }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed');
+      setTrustedDomains(data.domains);
+      setNewDomain('');
+      toast.success(data.message);
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const removeDomain = async (domain) => {
+    try {
+      const res = await fetch(`${API_URL}/api/settings/trusted-domains`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json();
+      setTrustedDomains(data.domains);
+      toast.success(`Removed ${domain}`);
+    } catch { toast.error('Failed to remove domain'); }
+  };
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
@@ -258,6 +299,131 @@ export default function SettingsPage() {
               <p style={{ fontSize: '0.78rem', color: 'rgba(74,222,128,0.85)' }}>
                 Alerts will be sent to <strong>{user?.email}</strong>
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* S16: Email Alert Configuration */}
+        <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 18 }}>
+          <p className="ap-section-title" style={{ marginBottom: 6 }}>Email Alert Notifications</p>
+          <p className="ap-muted" style={{ marginBottom: 18, fontSize: '0.8rem' }}>
+            Get notified by email when unauthorized copies of your assets are detected.
+          </p>
+
+          <Field label="Alert Email Address">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="email"
+                id="alertEmail"
+                defaultValue={user?.email || ''}
+                className="ap-input"
+                placeholder="your@email.com"
+                style={{ flex: 1 }}
+              />
+              <button
+                onClick={async () => {
+                  const email = document.getElementById('alertEmail').value;
+                  if (!email) { toast.error('Enter an email'); return; }
+                  try {
+                    const res = await fetch(`${API_URL}/api/media/alert-settings`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email, enabled: true, threshold: 0 }),
+                    });
+                    if (!res.ok) throw new Error();
+                    toast.success('Email alerts enabled');
+                  } catch { toast.error('Failed to save alert settings'); }
+                }}
+                className="ap-btn ap-btn-green"
+                style={{ padding: '8px 18px', fontSize: '0.82rem', flexShrink: 0 }}
+              >
+                Enable
+              </button>
+            </div>
+          </Field>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <button
+              onClick={async () => {
+                try {
+                  toast.loading('Sending test alert…', { id: 'test-alert' });
+                  const res = await fetch(`${API_URL}/api/media/send-test-alert`, { method: 'POST' });
+                  const data = await res.json();
+                  if (data.sent) {
+                    toast.success('Test alert sent — check your inbox', { id: 'test-alert' });
+                  } else {
+                    toast.error(data.error || 'Failed to send', { id: 'test-alert' });
+                  }
+                } catch { toast.error('Failed to send test alert', { id: 'test-alert' }); }
+              }}
+              className="ap-btn ap-btn-ghost"
+              style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem' }}
+            >
+              Send Test Alert
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_URL}/api/media/alert-settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: '', enabled: false, threshold: 0 }),
+                  });
+                  if (!res.ok) throw new Error();
+                  toast.success('Email alerts disabled');
+                } catch { toast.error('Failed'); }
+              }}
+              className="ap-btn ap-btn-ghost"
+              style={{ flex: 1, padding: '8px 16px', fontSize: '0.78rem', color: 'rgba(248,113,113,0.7)', borderColor: 'rgba(248,113,113,0.2)' }}
+            >
+              Disable Alerts
+            </button>
+          </div>
+        </div>
+
+        {/* Trusted Domains */}
+        <div className="ap-card" style={{ padding: '24px 28px', marginBottom: 18 }}>
+          <p className="ap-section-title" style={{ marginBottom: 6 }}>Trusted Domains</p>
+          <p className="ap-muted" style={{ marginBottom: 18, fontSize: '0.8rem' }}>
+            Matches found on these domains are marked as <strong style={{ color: '#4ade80' }}>authorized</strong> and won&apos;t trigger violation alerts.
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <input
+              type="text" value={newDomain}
+              onChange={e => setNewDomain(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addDomain()}
+              placeholder="e.g. espn.com"
+              className="ap-input" style={{ flex: 1 }}
+            />
+            <button onClick={addDomain} className="ap-btn ap-btn-green"
+              style={{ padding: '8px 18px', fontSize: '0.82rem', flexShrink: 0 }}>
+              Add
+            </button>
+          </div>
+
+          {loadingDomains ? (
+            <p className="ap-muted" style={{ fontSize: '0.8rem' }}>Loading…</p>
+          ) : trustedDomains.length === 0 ? (
+            <p className="ap-muted" style={{ fontSize: '0.8rem', textAlign: 'center', padding: '14px 0' }}>
+              No trusted domains yet. All matches will be flagged as unauthorized.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {trustedDomains.map(d => (
+                <span key={d} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)',
+                  borderRadius: 20, padding: '5px 12px', fontSize: '0.82rem', color: '#4ade80',
+                }}>
+                  {d}
+                  <button onClick={() => removeDomain(d)}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 0, display: 'flex', fontSize: '1rem', lineHeight: 1 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+                  >&times;</button>
+                </span>
+              ))}
             </div>
           )}
         </div>

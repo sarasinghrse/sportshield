@@ -11,8 +11,12 @@ import { doc, getDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 
 async function redirectAfterLogin(uid, router) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  router.push(snap.exists() ? '/' : '/onboarding');
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    router.push(snap.exists() ? '/' : '/onboarding');
+  } catch {
+    router.push('/onboarding');
+  }
 }
 
 export default function LoginPage() {

@@ -115,29 +115,71 @@ export default function UploadPage() {
   };
 
   /* ── Shared success card ── */
-  const SuccessCard = ({ asset, onReset }) => (
-    <div className="ap-card" style={{ padding: '36px 32px', textAlign: 'center', border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.04)' }}>
-      <div style={{ marginBottom: 16, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 8 }}>Asset Registered!</h2>
-      <p className="ap-muted" style={{ marginBottom: 4 }}>
-        <strong style={{ color: '#fff' }}>{asset.filename || 'Extracted image'}</strong> has been fingerprinted.
-      </p>
-      <p className="ap-muted" style={{ marginBottom: 4, fontSize: '0.82rem' }}>Background scan started. Results appear in a few minutes.</p>
-      <p style={{ fontSize: '0.8rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
-        {isPublic ? 'Visible on Community Dashboard' : 'Private — only you can see this'}
-      </p>
-      {asset.phash && (
-        <div className="ap-card" style={{ padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
-          <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 6 }}>Perceptual Hash (pHash)</p>
-          <code style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#4ade80', wordBreak: 'break-all' }}>{asset.phash}</code>
+  const SuccessCard = ({ asset, onReset }) => {
+    const assetId = asset.id || asset.assetId;
+    const wmUrl   = asset.watermarkedUrl || null;
+    const onDemandUrl = assetId
+      ? `${API_URL}/api/media/watermarked/${assetId}?email=demo@sportshield.io&session=${assetId}`
+      : null;
+
+    return (
+      <div className="ap-card" style={{ padding: '36px 32px', textAlign: 'center', border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.04)' }}>
+        <div style={{ marginBottom: 16, display:"flex", justifyContent:"center" }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 8 }}>Asset Registered!</h2>
+        <p className="ap-muted" style={{ marginBottom: 4 }}>
+          <strong style={{ color: '#fff' }}>{asset.filename || 'Extracted image'}</strong> has been fingerprinted.
+        </p>
+        <p className="ap-muted" style={{ marginBottom: 4, fontSize: '0.82rem' }}>Background scan started. Results appear in a few minutes.</p>
+        <p style={{ fontSize: '0.8rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
+          {isPublic ? 'Visible on Community Dashboard' : 'Private — only you can see this'}
+        </p>
+
+        {asset.phash && (
+          <div className="ap-card" style={{ padding: '14px 18px', marginBottom: 16, textAlign: 'left' }}>
+            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 6 }}>Perceptual Hash (pHash)</p>
+            <code style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#4ade80', wordBreak: 'break-all' }}>{asset.phash}</code>
+          </div>
+        )}
+
+        {/* Watermark section */}
+        <div className="ap-card" style={{ padding: '18px 20px', marginBottom: 24, textAlign: 'left', border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <p style={{ fontSize: '0.75rem', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Dynamic Watermark Active</p>
+          </div>
+          <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)', marginBottom: 12, lineHeight: 1.6 }}>
+            Every download of this asset is stamped with the recipient&apos;s email, timestamp, and session ID. Screenshots are traceable.
+          </p>
+          {wmUrl && (
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>Default watermarked copy:</p>
+              <img src={wmUrl} alt="Watermarked preview" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, objectFit: 'contain', border: '1px solid rgba(251,191,36,0.15)' }} />
+            </div>
+          )}
+          {onDemandUrl && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <a href={onDemandUrl} target="_blank" rel="noopener noreferrer"
+                className="ap-btn ap-btn-ghost"
+                style={{ fontSize: '0.78rem', padding: '7px 14px', borderColor: 'rgba(251,191,36,0.3)', color: '#fbbf24' }}>
+                Preview Watermarked →
+              </a>
+              <button
+                onClick={() => { navigator.clipboard.writeText(onDemandUrl); toast.success('Watermark URL copied!'); }}
+                className="ap-btn ap-btn-ghost"
+                style={{ fontSize: '0.78rem', padding: '7px 14px' }}>
+                Copy Link
+              </button>
+            </div>
+          )}
         </div>
-      )}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button onClick={onReset} className="ap-btn ap-btn-ghost">Scan Another</button>
-        <Link href="/" className="ap-btn ap-btn-green">View Dashboard →</Link>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={onReset} className="ap-btn ap-btn-ghost">Scan Another</button>
+          <Link href="/" className="ap-btn ap-btn-green">View Dashboard →</Link>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="ap-root">

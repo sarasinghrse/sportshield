@@ -150,6 +150,21 @@ function AlertCard({ alert }) {
           <span className={`ap-badge ${isHigh ? 'ap-badge-high' : 'ap-badge-medium'}`} style={{ textTransform: 'uppercase' }}>
             {alert.severity || 'medium'}
           </span>
+          {(() => {
+            const rs = alert.riskScore != null ? alert.riskScore
+              : Math.min(100, Math.round((alert.confidence || 50) * 0.6 + (alert.severity === 'high' ? 30 : 15)));
+            return (
+              <span style={{
+                fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.7rem',
+                padding: '2px 8px', borderRadius: 10,
+                color: rs >= 75 ? '#ef4444' : rs >= 50 ? '#f59e0b' : '#4ade80',
+                background: rs >= 75 ? 'rgba(239,68,68,0.12)' : rs >= 50 ? 'rgba(245,158,11,0.12)' : 'rgba(74,222,128,0.1)',
+                border: `1px solid ${rs >= 75 ? 'rgba(239,68,68,0.25)' : rs >= 50 ? 'rgba(245,158,11,0.25)' : 'rgba(74,222,128,0.2)'}`,
+              }}>
+                Risk {rs}
+              </span>
+            );
+          })()}
           {!alert.isRead && (
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.7rem', color: '#fca5a5', letterSpacing: '0.08em' }}>
               ● NEW

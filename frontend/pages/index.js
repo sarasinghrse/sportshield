@@ -327,7 +327,9 @@ export default function Dashboard() {
                     <tr>
                       <th>Asset</th>
                       <th>Status</th>
+                      <th>Risk</th>
                       <th>Matches</th>
+                      <th>Spread</th>
                       <th>Scans</th>
                     </tr>
                   </thead>
@@ -343,6 +345,18 @@ export default function Dashboard() {
       </div>
     </>
   );
+}
+
+// Client-side risk score estimation for assets that don't have it from the backend yet
+function estimateRiskScore(asset) {
+  if (asset.riskScore != null) return asset.riskScore;
+  const n = asset.matchCount || 0;
+  if (n === 0) return 0;
+  const volume = n <= 2 ? n * 10 : n <= 4 ? 20 + (n - 2) * 5 : 30;
+  const confidence = 20; // assume moderate when we don't have per-match data
+  const severity = n >= 3 ? 15 : n >= 1 ? 8 : 0;
+  const ai = asset.aiDetection?.is_ai ? Math.round(asset.aiDetection.confidence * 15) : 0;
+  return Math.min(100, volume + confidence + severity + ai);
 }
 
 function AssetRow({ asset }) {
@@ -371,9 +385,29 @@ function AssetRow({ asset }) {
             <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
               {asset.filename || 'Unnamed'}
             </p>
-            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)', textTransform: 'capitalize' }}>
-              {asset.type || 'image'}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)', textTransform: 'capitalize' }}>
+                {asset.type || 'image'}
+              </p>
+              {asset.deepfakeAnalysis?.isDeepfake && (
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+                  color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}>
+                  Deepfake
+                </span>
+              )}
+              {asset.aiDetection?.is_ai && !asset.deepfakeAnalysis?.isDeepfake && (
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+                  color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}>
+                  AI Gen
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </td>
@@ -386,9 +420,66 @@ function AssetRow({ asset }) {
         </span>
       </td>
       <td>
-        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: (asset.matchCount || 0) > 0 ? '#f87171' : 'rgba(255,255,255,0.25)' }}>
-          {(asset.matchCount || 0) > 0 ? `! ${asset.matchCount}` : '—'}
-        </span>
+        {(() => {
+          const s = estimateRiskScore(asset);
+          const c = s >= 75 ? '#ef4444' : s >= 50 ? '#f59e0b' : s >= 25 ? '#3b82f6' : '#4ade80';
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div style={{ width: `${s}%`, height: '100%', borderRadius: 2, background: c }} />
+              </div>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.82rem', color: c }}>{s}</span>
+            </div>
+          );
+        })()}
+      </td>
+      <td>
+        {(asset.matchCount || 0) > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {asset.unauthorizedCount != null ? (
+              <>
+                {(asset.unauthorizedCount || 0) > 0 && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f87171' }}>
+                    {asset.unauthorizedCount} unauthorized
+                  </span>
+                )}
+                {(asset.authorizedCount || 0) > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#4ade80' }}>
+                    {asset.authorizedCount} authorized
+                  </span>
+                )}
+              </>
+            ) : (
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f87171' }}>
+                {asset.matchCount} {asset.matchCount === 1 ? 'match' : 'matches'} found
+              </span>
+            )}
+          </div>
+        ) : (
+          <span style={{ fontSize: '0.82rem', color: '#4ade80', fontWeight: 600 }}>Clean</span>
+        )}
+      </td>
+      <td>
+        {(() => {
+          const n = asset.matchCount || 0;
+          if (n === 0) return <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.2)' }}>—</span>;
+          const dots = Math.min(n, 5);
+          const speedColor = n >= 5 ? '#ef4444' : n >= 3 ? '#f59e0b' : '#3b82f6';
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {Array.from({ length: dots }).map((_, i) => (
+                <div key={i} style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: speedColor,
+                  opacity: 1 - (i * 0.15),
+                }} />
+              ))}
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.72rem', color: speedColor, marginLeft: 4 }}>
+                {n >= 5 ? 'Rapid' : n >= 3 ? 'Moderate' : 'Limited'}
+              </span>
+            </div>
+          );
+        })()}
       </td>
       <td>
         <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>{asset.scanCount || 0}</span>
