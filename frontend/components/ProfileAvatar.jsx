@@ -1,7 +1,6 @@
 // components/ProfileAvatar.jsx
-// Profile icon that lives in every app-page nav bar.
-// Shows user's photo (or initials fallback), clicking opens a dropdown
-// with links to Settings, Community Dashboard, and Logout.
+// Profile icon in app-page nav bar. Photo or initials → dropdown with
+// Settings, Community Dashboard, Logout.
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -16,7 +15,6 @@ export default function ProfileAvatar() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Close on outside click
   useEffect(() => {
     function handler(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -35,55 +33,104 @@ export default function ProfileAvatar() {
   const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const photoUrl = profile?.profilePic || null;
 
+  const triggerStyle = {
+    width: 36, height: 36, borderRadius: '50%',
+    border: '2px solid rgba(74,222,128,0.4)',
+    background: 'rgba(26,92,26,0.3)',
+    cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', padding: 0, flexShrink: 0,
+    transition: 'border-color 0.2s, transform 0.2s',
+  };
+
+  const photoStyle = {
+    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+  };
+
+  const initialsStyle = {
+    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.8rem',
+    color: '#4ade80', letterSpacing: '0.04em',
+  };
+
+  const dropdownStyle = {
+    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+    minWidth: 240, padding: 10,
+    background: '#0d1f10',
+    border: '1px solid rgba(74,222,128,0.18)',
+    borderRadius: 12,
+    boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+    zIndex: 100,
+    display: 'flex', flexDirection: 'column', gap: 2,
+  };
+
+  const itemStyle = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '9px 12px', borderRadius: 8,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '0.85rem', fontWeight: 500,
+    textDecoration: 'none', cursor: 'pointer',
+    background: 'none', border: 'none', textAlign: 'left',
+    transition: 'background 0.15s',
+  };
+
   return (
-    <div className="pav-root" ref={ref}>
-      {/* Avatar trigger button */}
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <button
-        className="pav-trigger"
         onClick={() => setOpen(o => !o)}
         aria-label="Profile menu"
         title={displayName}
+        style={triggerStyle}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(74,222,128,0.7)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(74,222,128,0.4)'; }}
       >
         {photoUrl ? (
-          <img src={photoUrl} alt={displayName} className="pav-photo" />
+          <img src={photoUrl} alt={displayName} style={photoStyle} />
         ) : (
-          <span className="pav-initials">{initials}</span>
+          <span style={initialsStyle}>{initials}</span>
         )}
       </button>
 
-      {/* Dropdown panel */}
       {open && (
-        <div className="pav-dropdown">
-          {/* User identity */}
-          <div className="pav-identity">
-            <div className="pav-identity-avatar">
+        <div style={dropdownStyle}>
+          {/* Identity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px 12px' }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'rgba(26,92,26,0.3)', border: '1px solid rgba(74,222,128,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {photoUrl ? (
-                <img src={photoUrl} alt={displayName} className="pav-photo" />
+                <img src={photoUrl} alt={displayName} style={photoStyle} />
               ) : (
-                <span className="pav-initials">{initials}</span>
+                <span style={initialsStyle}>{initials}</span>
               )}
             </div>
-            <div>
-              <p className="pav-name">{displayName}</p>
-              <p className="pav-email">{user?.email}</p>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {displayName}
+              </p>
+              <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.email}
+              </p>
             </div>
           </div>
 
-          <div className="pav-divider" />
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
 
-          {/* Navigation links */}
-          <Link href="/settings" className="pav-item" onClick={() => setOpen(false)}>
+          <Link href="/settings" style={itemStyle} onClick={() => setOpen(false)}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
             <SettingsIcon />
             Settings
           </Link>
-          <Link href="/public-dashboard" className="pav-item" onClick={() => setOpen(false)}>
+          <Link href="/public-dashboard" style={itemStyle} onClick={() => setOpen(false)}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
             <CommunityIcon />
             Community Dashboard
           </Link>
 
-          <div className="pav-divider" />
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
 
-          <button className="pav-item pav-logout" onClick={handleLogout}>
+          <button onClick={handleLogout} style={{ ...itemStyle, color: 'rgba(248,113,113,0.85)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
             <LogoutIcon />
             Log out
           </button>
@@ -93,7 +140,6 @@ export default function ProfileAvatar() {
   );
 }
 
-/* ── inline SVG icons ── */
 const SettingsIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3"/>

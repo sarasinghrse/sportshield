@@ -122,7 +122,8 @@ export default function PublicDashboard() {
               const uploadedAt  = asset.uploadedAt?.toDate?.() || new Date();
 
               return (
-                <div key={asset.id} className="ap-card" style={{ overflow: 'hidden', transition: 'border-color 0.2s, transform 0.2s' }}
+                <Link key={asset.id} href={`/assets/${asset.id}`} className="ap-card"
+                  style={{ overflow: 'hidden', transition: 'border-color 0.2s, transform 0.2s', cursor: 'pointer', textDecoration: 'none', display: 'block', color: 'inherit' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(74,222,128,0.4)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(26,92,26,0.28)'; e.currentTarget.style.transform = 'none'; }}
                 >
@@ -169,10 +170,11 @@ export default function PublicDashboard() {
                         </div>
                         {/* Top violation URL */}
                         {assetAlerts[0]?.foundUrl && (
-                          <a href={assetAlerts[0].foundUrl} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'block', fontSize: '0.72rem', color: '#60a5fa', textDecoration: 'none', marginTop: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(assetAlerts[0].foundUrl, '_blank', 'noopener,noreferrer'); }}
+                            style={{ display: 'block', fontSize: '0.72rem', color: '#60a5fa', textDecoration: 'none', marginTop: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                             ↗ {assetAlerts[0].foundUrl}
-                          </a>
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -192,7 +194,7 @@ export default function PublicDashboard() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

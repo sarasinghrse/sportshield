@@ -141,6 +141,7 @@ export default function SettingsPage() {
         { merge: true }
       );
       toast.success('Profile saved!');
+      setTimeout(() => router.push('/'), 800);
     } catch (err) {
       toast.error('Save failed — ' + err.message);
     } finally { setSaving(false); }
