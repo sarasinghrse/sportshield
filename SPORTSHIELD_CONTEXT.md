@@ -97,6 +97,12 @@ Mounts 5 routers under `/api/`:
 | **`clip_search.py`** | **P1** | **CLIP+Qdrant semantic vector search (512-dim embeddings)** |
 | **`forensic_watermark.py`** | **P1** | **DWT-DCT-SVD forensic watermark (replaces LSB)** |
 | **`c2pa_credentials.py`** | **P1** | **C2PA Content Credentials signing & verification** |
+| **`audio_fingerprint.py`** | **P2** | **Chromaprint spectral audio fingerprinting for live stream matching** |
+| **`multimodal_confirm.py`** | **P2** | **Scoreboard OCR + CLIP logo detection + Whisper commentary matching** |
+| **`radar_engine.py`** | **P2** | **Live Stream Piracy Radar orchestrator (reference ingest → suspect analysis → detection)** |
+| **`enforcement_agent.py`** | **P3** | **Autonomous DMCA enforcement agent with escalation ladder** |
+| **`evidence_pack.py`** | **P4** | **Court-ready evidence pack generator** |
+| **`crowd_network.py`** | **P4** | **Crowdsourced detector network with leaderboard & bounties** |
 
 ### Key Endpoints in `routers/media.py`
 - `POST /upload` — handles image/video/audio, runs all detection in parallel threads

@@ -169,6 +169,7 @@ export default function Dashboard() {
             <span className="db-logo-text">SPORTSHIELD</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Link href="/radar" className="db-nav-link">Live Radar</Link>
             <Link href="/public-dashboard" className="db-nav-link">Community</Link>
             <Link href="/analytics" className="db-nav-link">Analytics</Link>
             <Link href="/settings"  className="db-nav-link">Settings</Link>
