@@ -21,10 +21,11 @@ async function redirectAfterLogin(uid, router) {
   }
 }
 
-function isEmbeddedBrowser() {
+function shouldUseRedirect() {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  return /FBAN|FBAV|Instagram|Twitter|Line\/|Snapchat|WhatsApp|WebView|wv\)/i.test(ua);
+  if (/FBAN|FBAV|Instagram|Twitter|Line\/|Snapchat|WhatsApp|LinkedIn|WebView|wv\)/i.test(ua)) return true;
+  return /Mobi|Android|iPhone|iPad/i.test(ua);
 }
 
 export default function LoginPage() {
@@ -43,7 +44,7 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      if (isEmbeddedBrowser()) {
+      if (shouldUseRedirect()) {
         await signInWithRedirect(auth, new GoogleAuthProvider());
         return;
       }
