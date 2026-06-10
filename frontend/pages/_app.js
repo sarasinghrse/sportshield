@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import '../styles/sportshield.css';
 import Head from 'next/head';
+import ChatWidget from '../components/ChatWidget';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -11,6 +12,7 @@ export default function App({ Component, pageProps }) {
         <meta name="theme-color" content="#0a1210" />
       </Head>
       <Component {...pageProps} />
+      <ChatWidget />
     </>
   );
 }
