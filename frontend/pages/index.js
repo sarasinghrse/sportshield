@@ -300,7 +300,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Browser Extension + WhatsApp Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, alignItems: 'start' }}>
 
             {/* Extension CTA */}
             <div className="db-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>

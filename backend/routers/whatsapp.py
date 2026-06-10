@@ -68,6 +68,24 @@ def send_whatsapp(to: str, body: str):
         print(f"[WHATSAPP] Send error: {e}")
 
 
+# ── Send alert endpoint (called from dashboard) ────────────────────────────
+
+from pydantic import BaseModel
+
+class SendRequest(BaseModel):
+    to: str
+    message: str = "SportShield WhatsApp alerts activated! You will receive real-time piracy detection notifications here."
+
+@router.post("/send")
+async def send_alert(req: SendRequest):
+    phone = req.to.strip().replace(" ", "")
+    if not phone.startswith("+"):
+        phone = "+" + phone
+    wa_to = f"whatsapp:{phone}"
+    send_whatsapp(wa_to, req.message)
+    return {"status": "sent", "to": wa_to}
+
+
 # ── Background scan + reply ──────────────────────────────────────────────────
 
 def scan_and_reply(to: str, image_url: str, image_bytes: bytes):
