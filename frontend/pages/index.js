@@ -351,13 +351,47 @@ export default function Dashboard() {
                 onMouseLeave={e => e.currentTarget.style.background = '#1a5c1a'}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/>
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Add Extension to Browser
+                Download Extension (.zip)
               </a>
-              <p style={{ color: C.muted, fontSize: '0.72rem', lineHeight: 1.4 }}>
-                Chrome / Edge / Brave — load unpacked from <code style={{ color: '#4ade80', background: 'rgba(26,92,26,0.3)', padding: '1px 5px', borderRadius: 4, fontSize: '0.68rem' }}>extension/</code> folder via chrome://extensions
-              </p>
+              <div style={{
+                background: 'rgba(13,26,16,0.6)', border: '1px solid rgba(26,92,26,0.25)',
+                borderRadius: 10, padding: '14px 16px', marginTop: 2,
+              }}>
+                <p style={{
+                  fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                  fontSize: '0.82rem', color: '#4ade80', marginBottom: 10, textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}>How to install</p>
+                {[
+                  { step: '1', text: 'Click the download button above to get the .zip file' },
+                  { step: '2', text: 'Extract / unzip the downloaded file to a folder on your computer' },
+                  { step: '3', text: 'Open Chrome and go to', code: 'chrome://extensions' },
+                  { step: '4', text: 'Turn on "Developer mode" using the toggle in the top-right corner' },
+                  { step: '5', text: 'Click "Load unpacked" and select the extracted folder' },
+                  { step: '6', text: 'Pin the SportShield icon from the extensions puzzle icon in the toolbar' },
+                ].map(s => (
+                  <div key={s.step} style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start' }}>
+                    <span style={{
+                      minWidth: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(26,92,26,0.5)', color: '#4ade80',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.7rem', fontWeight: 800, flexShrink: 0, marginTop: 1,
+                    }}>{s.step}</span>
+                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                      {s.text}
+                      {s.code && <>{' '}<code style={{
+                        color: '#4ade80', background: 'rgba(26,92,26,0.35)',
+                        padding: '2px 7px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                      }}>{s.code}</code></>}
+                    </p>
+                  </div>
+                ))}
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', marginTop: 6, lineHeight: 1.4 }}>
+                  Works with Chrome, Edge, Brave, and all Chromium-based browsers.
+                </p>
+              </div>
             </div>
 
             {/* WhatsApp Alerts */}
