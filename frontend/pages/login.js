@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -19,6 +21,12 @@ async function redirectAfterLogin(uid, router) {
   }
 }
 
+function isEmbeddedBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|Instagram|Twitter|Line\/|Snapchat|WhatsApp|WebView|wv\)/i.test(ua);
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email,    setEmail]    = useState('');
@@ -26,9 +34,19 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading,  setLoading]  = useState(false);
 
+  useEffect(() => {
+    getRedirectResult(auth).then(result => {
+      if (result?.user) redirectAfterLogin(result.user.uid, router);
+    }).catch(() => {});
+  }, []);
+
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      if (isEmbeddedBrowser()) {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      }
       const result = await signInWithPopup(auth, new GoogleAuthProvider());
       await redirectAfterLogin(result.user.uid, router);
     } catch {
