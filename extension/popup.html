@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      min-height: 420px;
+      background: #0a1210;
+      color: #d4e8d4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0d1a10 0%, #122a14 100%);
+      border-bottom: 1px solid rgba(26,92,26,0.4);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: #1a5c1a;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-text {
+      font-weight: 900;
+      font-size: 15px;
+      color: #4ade80;
+      letter-spacing: 0.05em;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 8px rgba(74,222,128,0.5);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 14px 18px;
+    }
+    .stat-card {
+      background: rgba(13,26,16,0.85);
+      border: 1px solid rgba(26,92,26,0.3);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 4px;
+    }
+
+    .section {
+      padding: 0 18px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .action-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(13,26,16,0.6);
+      border: 1px solid rgba(26,92,26,0.25);
+      border-radius: 8px;
+      color: #d4e8d4;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 6px;
+    }
+    .action-btn:hover {
+      background: rgba(26,92,26,0.25);
+      border-color: rgba(26,92,26,0.5);
+    }
+    .action-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .action-desc {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      font-weight: 400;
+    }
+
+    .btn-green  .action-icon { background: rgba(26,92,26,0.4); }
+    .btn-red    .action-icon { background: rgba(220,38,38,0.2); }
+    .btn-blue   .action-icon { background: rgba(59,130,246,0.2); }
+    .btn-purple .action-icon { background: rgba(167,139,250,0.2); }
+
+    .footer {
+      padding: 12px 18px;
+      border-top: 1px solid rgba(26,92,26,0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer a {
+      color: #3caa3c;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .footer a:hover { color: #4ade80; }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(167,139,250,0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(167,139,250,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <span class="logo-text">SPORTSHIELD</span>
+    </div>
+    <div class="status-dot" title="Engine Active"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" style="color: #4ade80" id="stat-events">0</div>
+      <div class="stat-label">Active Events</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color: #ef4444" id="stat-pirates">0</div>
+      <div class="stat-label">Pirates Found</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color: #60a5fa" id="stat-suspects">0</div>
+      <div class="stat-label">Analyzed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color: #a78bfa" id="stat-points">0</div>
+      <div class="stat-label">Your Points</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section">
+    <div class="section-title">Quick Actions</div>
+
+    <button class="action-btn btn-green" id="btn-scan-page">
+      <div class="action-icon">🔍</div>
+      <div>
+        <div>Scan This Page</div>
+        <div class="action-desc">Check all images against your library</div>
+      </div>
+    </button>
+
+    <button class="action-btn btn-red" id="btn-report">
+      <div class="action-icon">🚨</div>
+      <div>
+        <div>Report This Page</div>
+        <div class="action-desc">Flag as pirate content source</div>
+      </div>
+    </button>
+
+    <button class="action-btn btn-blue" id="btn-dashboard">
+      <div class="action-icon">📊</div>
+      <div>
+        <div>Open War Room</div>
+        <div class="action-desc">Live radar, enforcement, crowd network</div>
+      </div>
+    </button>
+
+    <button class="action-btn btn-purple" id="btn-leaderboard">
+      <div class="action-icon">🏆</div>
+      <div>
+        <div>Leaderboard</div>
+        <div class="action-desc">Top pirate hunters</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- Rank -->
+  <div class="section">
+    <div class="section-title">Your Rank</div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="rank-badge" id="rank-badge">Scout</span>
+      <span style="font-size: 12px; color: rgba(255,255,255,0.35);" id="rank-info">Submit reports to earn points</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="http://localhost:3000" target="_blank">Open Dashboard</a>
+    <span style="font-size: 11px; color: rgba(255,255,255,0.2);">v1.0.0</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@ import { subscribeToAssets, subscribeToAlerts, markAlertRead } from '../lib/fire
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 /* ── shared dark-green design tokens (mirrors sportshield.css) ── */
 const C = {
   bg:        '#0a1210',
@@ -26,6 +28,9 @@ export default function Dashboard() {
   const [assets,  setAssets]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const [waPhone, setWaPhone] = useState('');
+  const [waSending, setWaSending] = useState(false);
+  const [waStatus, setWaStatus] = useState(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/landing');
@@ -293,6 +298,155 @@ export default function Dashboard() {
               })}
             </section>
           )}
+
+          {/* ── Browser Extension + WhatsApp Row ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+
+            {/* Extension CTA */}
+            <div className="db-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: 'linear-gradient(135deg, #1a5c1a 0%, #237523 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(26,92,26,0.4)',
+                  flexShrink: 0,
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: 2 }}>
+                    Browser Extension
+                  </p>
+                  <p style={{ color: C.muted, fontSize: '0.78rem' }}>
+                    Right-click protect, report pirates, scan pages, verify C2PA
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {['Right-click Protect', 'Report Pirates', 'Page Scanner', 'C2PA Verify', 'Watermark Check', 'Crowd Network'].map(f => (
+                  <span key={f} style={{
+                    fontSize: '0.68rem', padding: '3px 8px', borderRadius: 20,
+                    background: 'rgba(26,92,26,0.2)', color: '#4ade80',
+                    border: '1px solid rgba(74,222,128,0.15)',
+                    fontWeight: 600,
+                  }}>{f}</span>
+                ))}
+              </div>
+              <a
+                href="/extension.zip"
+                download
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: '#1a5c1a', color: '#fff',
+                  fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
+                  fontSize: '0.82rem', letterSpacing: '0.05em', textTransform: 'uppercase',
+                  padding: '10px 20px', borderRadius: 8, textDecoration: 'none',
+                  boxShadow: '0 4px 16px rgba(26,92,26,0.4)',
+                  transition: 'background 0.2s', width: 'fit-content',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#237523'}
+                onMouseLeave={e => e.currentTarget.style.background = '#1a5c1a'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/>
+                </svg>
+                Add Extension to Browser
+              </a>
+              <p style={{ color: C.muted, fontSize: '0.72rem', lineHeight: 1.4 }}>
+                Chrome / Edge / Brave — load unpacked from <code style={{ color: '#4ade80', background: 'rgba(26,92,26,0.3)', padding: '1px 5px', borderRadius: 4, fontSize: '0.68rem' }}>extension/</code> folder via chrome://extensions
+              </p>
+            </div>
+
+            {/* WhatsApp Alerts */}
+            <div className="db-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: 'linear-gradient(135deg, #128C7E 0%, #25D366 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(37,211,102,0.3)',
+                  flexShrink: 0,
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: 2 }}>
+                    WhatsApp Alerts
+                  </p>
+                  <p style={{ color: C.muted, fontSize: '0.78rem' }}>
+                    Get instant piracy alerts on your phone
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="tel"
+                  placeholder="Phone number (e.g. +91 98765 43210)"
+                  value={waPhone}
+                  onChange={e => { setWaPhone(e.target.value); setWaStatus(null); }}
+                  style={{
+                    flex: 1, background: 'rgba(10,18,16,0.6)',
+                    border: '1px solid rgba(26,92,26,0.35)', borderRadius: 8,
+                    padding: '10px 14px', color: '#d4e8d4', fontSize: '0.82rem',
+                    outline: 'none', fontFamily: "'Barlow', sans-serif",
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (!waPhone.trim()) return;
+                    setWaSending(true); setWaStatus(null);
+                    try {
+                      const res = await fetch(`${API}/api/whatsapp/send`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ to: waPhone.trim(), message: 'SportShield WhatsApp alerts activated! You will receive real-time piracy detection notifications here.' }),
+                      });
+                      setWaStatus(res.ok ? 'sent' : 'error');
+                    } catch { setWaStatus('error'); }
+                    setWaSending(false);
+                  }}
+                  disabled={waSending || !waPhone.trim()}
+                  style={{
+                    background: '#25D366', color: '#fff', border: 'none',
+                    padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
+                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
+                    fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase',
+                    opacity: waSending || !waPhone.trim() ? 0.5 : 1,
+                    transition: 'opacity 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {waSending ? 'Sending...' : 'Activate'}
+                </button>
+              </div>
+              {waStatus === 'sent' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#25D366', fontSize: '0.78rem', fontWeight: 600 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  WhatsApp alert activated! Check your phone.
+                </div>
+              )}
+              {waStatus === 'error' && (
+                <div style={{ color: '#f87171', fontSize: '0.78rem', fontWeight: 600 }}>
+                  Failed to send. Check your number and try again.
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {['Piracy Alerts', 'DMCA Updates', 'Scan Results', 'Risk Warnings'].map(f => (
+                  <span key={f} style={{
+                    fontSize: '0.68rem', padding: '3px 8px', borderRadius: 20,
+                    background: 'rgba(37,211,102,0.1)', color: '#25D366',
+                    border: '1px solid rgba(37,211,102,0.15)',
+                    fontWeight: 600,
+                  }}>{f}</span>
+                ))}
+              </div>
+            </div>
+          </div>
 
           {/* ── Protected Assets ── */}
           <section>
