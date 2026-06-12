@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ProfileAvatar from '../components/ProfileAvatar';
+import Footer from '../components/landing/Footer';
 import { subDays, startOfDay, format } from 'date-fns';
 import {
   LineChart, Line, BarChart, Bar,
@@ -201,6 +202,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

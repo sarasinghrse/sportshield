@@ -7,13 +7,15 @@ Required env vars:
 from fastapi import APIRouter
 from pydantic import BaseModel
 import httpx
+from datetime import datetime, timezone
 from config import BREVO_SMTP_KEY, BREVO_SENDER_EMAIL
+from services.firebase_client import db as firestore_db
 
 router = APIRouter()
 
 TEAM_EMAILS = [
     {"email": "anshurajwork@gmail.com", "name": "Anshu Raj"},
-    {"email": "20singhsara@gmail.com",  "name": "Sara Singh"},
+    {"email": "sarasingh2k27@gmail.com", "name": "Sara Singh"},
 ]
 
 
@@ -26,8 +28,20 @@ class ContactForm(BaseModel):
 
 @router.post("/send")
 async def send_contact(data: ContactForm):
+    # Store in Firestore for admin dashboard
+    try:
+        firestore_db.collection("contact_messages").add({
+            "name": data.name,
+            "email": data.email,
+            "subject": data.subject,
+            "message": data.message,
+            "createdAt": datetime.now(timezone.utc),
+            "read": False,
+        })
+    except Exception as e:
+        print(f"[CONTACT] Firestore save failed: {e}")
+
     if not BREVO_SMTP_KEY:
-        # Dev fallback — just acknowledge receipt
         print(f"[CONTACT] {data.name} <{data.email}>: {data.message}")
         return {"ok": True, "dev": True}
 

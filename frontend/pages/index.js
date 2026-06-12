@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { subscribeToAssets, subscribeToAlerts, markAlertRead } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
+import Footer from '../components/landing/Footer';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -531,6 +532,7 @@ export default function Dashboard() {
             )}
           </section>
         </main>
+        <Footer />
       </div>
     </>
   );

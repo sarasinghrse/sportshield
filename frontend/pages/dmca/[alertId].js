@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ArrowLeft, Copy, Download, FileText } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import Footer from '../../components/landing/Footer';
 import toast, { Toaster } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -178,6 +179,7 @@ Date: ${noticeDate}`;
           This notice is auto-generated. Consult a legal professional before sending.
         </p>
       </main>
+      <Footer />
     </div>
   );
 }

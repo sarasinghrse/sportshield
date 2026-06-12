@@ -4,7 +4,7 @@ import Link from 'next/link';
 const TEAM = [
   {
     name:     'Sara Singh',
-    email:    '20singhsara@gmail.com',
+    email:    'sarasingh2k27@gmail.com',
     linkedin: 'https://www.linkedin.com/in/sara-singh-574673267/',
   },
   {
@@ -34,13 +34,13 @@ const GitHubIcon = () => (
 );
 
 const featLinks = [
-  { label: 'Monitor',     href: '/dashboard' },
-  { label: 'Detect',      href: '/dashboard' },
-  { label: 'DMCA Notice', href: '/dashboard' },
-  { label: 'Certificate', href: '/dashboard' },
-  { label: 'Analytics',   href: '/analytics' },
-  { label: 'Verify URL',  href: '/verify'    },
-  { label: 'Community',   href: '/public-dashboard' },
+  { label: 'Monitor',     href: '/features#monitor' },
+  { label: 'Detect',      href: '/features#detect' },
+  { label: 'DMCA Notice', href: '/features#dmca' },
+  { label: 'Certificate', href: '/features#cert' },
+  { label: 'Analytics',   href: '/features#analytics' },
+  { label: 'Verify URL',  href: '/features#verify' },
+  { label: 'Community',   href: '/features#community' },
 ];
 
 const aboutLinks = [
@@ -84,7 +84,7 @@ export default function Footer() {
 
         {/* Features */}
         <div className="ss-footer-col">
-          <h4>Features</h4>
+          <h4><Link href="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link></h4>
           {featLinks.map(l => (
             <Link href={l.href} key={l.label}>{l.label}</Link>
           ))}
@@ -97,7 +97,7 @@ export default function Footer() {
             <Link href={l.href} key={l.label}>{l.label}</Link>
           ))}
           <a href={GITHUB} target="_blank" rel="noreferrer">GitHub ↗</a>
-          <a href="https://developers.google.com/community/gdsc" target="_blank" rel="noreferrer">
+          <a href="https://hack2skill.com/event/build-with-ai?tab=solutionchallenge2026" target="_blank" rel="noreferrer">
             Google Solutions Challenge ↗
           </a>
         </div>

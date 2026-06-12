@@ -36,7 +36,7 @@ export default function ContactPage() {
         setError(data.error || 'Failed to send message. Please try emailing us directly.');
       }
     } catch {
-      setError('Network error — please email us directly at anshurajwork@gmail.com');
+      setError('Network error — please email us directly at sarasingh2k27@gmail.com');
     } finally {
       setLoading(false);
     }

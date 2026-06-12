@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { db, subscribeToScanResults, setAssetVisibility } from '../../lib/firebase';
+import Footer from '../../components/landing/Footer';
 import { doc, onSnapshot } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -1589,6 +1590,7 @@ export default function AssetDetail() {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

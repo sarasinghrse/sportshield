@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
+import Footer from '../components/landing/Footer';
 
 const C = {
   bg:        '#0a1210',
@@ -493,6 +494,7 @@ export default function RadarPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

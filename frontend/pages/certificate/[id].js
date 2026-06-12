@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ArrowLeft, Award, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import Footer from '../../components/landing/Footer';
 import { db } from '../../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth';
@@ -232,6 +233,7 @@ export default function CertificatePage() {
           PDF includes a cryptographic fingerprint for legal use.
         </p>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -34,6 +34,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading,  setLoading]  = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminCode,  setAdminCode]  = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     getRedirectResult(auth).then(result => {
@@ -246,6 +252,66 @@ export default function LoginPage() {
               {isSignUp ? 'Sign in' : 'Sign up free'}
             </button>
           </p>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 20, paddingTop: 16 }}>
+            <button
+              onClick={() => setShowAdmin(!showAdmin)}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: "'Barlow', sans-serif", display: 'flex', alignItems: 'center', gap: 6, margin: '0 auto' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Login as Administrator {showAdmin ? '▲' : '▼'}
+            </button>
+
+            {showAdmin && (
+              <div style={{ marginTop: 14, padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginBottom: 10, textAlign: 'center' }}>
+                  Admin Email: DesiCodingClub@hack2skill.com &nbsp;|&nbsp; Code: SaraAnshuAmit
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <input
+                    className="auth-input"
+                    type="email"
+                    placeholder="Admin email"
+                    value={adminEmail}
+                    onChange={e => setAdminEmail(e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '10px 14px' }}
+                  />
+                  <input
+                    className="auth-input"
+                    type="password"
+                    placeholder="Admin code"
+                    value={adminCode}
+                    onChange={e => setAdminCode(e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '10px 14px' }}
+                  />
+                  {adminError && <p style={{ color: '#f87171', fontSize: '0.78rem', textAlign: 'center' }}>{adminError}</p>}
+                  <button
+                    disabled={adminLoading}
+                    onClick={async () => {
+                      setAdminLoading(true);
+                      setAdminError('');
+                      try {
+                        const res = await fetch(`${API_URL}/api/admin/login`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: adminEmail, code: adminCode }),
+                        });
+                        if (res.ok) {
+                          sessionStorage.setItem('adminAuth', JSON.stringify({ email: adminEmail, code: adminCode }));
+                          router.push('/admin-dashboard');
+                        } else {
+                          setAdminError('Invalid email or code.');
+                        }
+                      } catch {
+                        setAdminError('Network error. Try again.');
+                      } finally { setAdminLoading(false); }
+                    }}
+                    style={{ background: '#1a5c1a', color: '#fff', border: 'none', borderRadius: 10, padding: '10px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}>
+                    {adminLoading ? 'Verifying…' : 'Enter Admin Dashboard'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <p className="auth-footer">© 2026 SportShield · Google Solutions Challenge</p>
         </div>

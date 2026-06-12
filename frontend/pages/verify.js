@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import Footer from '../components/landing/Footer';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -211,9 +212,7 @@ export default function VerifyPage() {
         </div>
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '16px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(26,92,26,0.15)' }}>
-        SportShield — Google Solutions Challenge 2026
-      </footer>
+      <Footer />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

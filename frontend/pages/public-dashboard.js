@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { subscribeToPublicAssets, subscribeToPublicAlerts } from '../lib/firebase';
+import Footer from '../components/landing/Footer';
 
 export default function PublicDashboard() {
   const [assets,  setAssets]  = useState([]);
@@ -217,9 +218,7 @@ export default function PublicDashboard() {
         )}
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '20px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(26,92,26,0.15)', marginTop: 40 }}>
-        SportShield — Google Solutions Challenge 2026 · Public data only
-      </footer>
+      <Footer />
     </div>
   );
 }

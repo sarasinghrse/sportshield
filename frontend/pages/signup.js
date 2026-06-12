@@ -223,6 +223,13 @@ export default function SignUpPage() {
             Already have an account? <a href="/login">Sign in</a>
           </p>
 
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 16, paddingTop: 12, textAlign: 'center' }}>
+            <a href="/login" style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Login as Administrator
+            </a>
+          </div>
+
           <p className="su-footer">© 2026 SportShield · Google Solutions Challenge</p>
         </div>
       </div>

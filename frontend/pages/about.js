@@ -15,7 +15,7 @@ const VALUES = [
 ];
 
 const TEAM = [
-  { name: 'Sara Singh',  role: 'Full-Stack Web', linkedin: 'https://www.linkedin.com/in/sara-singh-574673267/',  email: '20singhsara@gmail.com' },
+  { name: 'Sara Singh',  role: 'Full-Stack Web', linkedin: 'https://www.linkedin.com/in/sara-singh-574673267/',  email: 'sarasingh2k27@gmail.com' },
   { name: 'Anshu Raj',   role: 'Flutter / Mobile', linkedin: 'https://www.linkedin.com/in/anshu-raj-142b55253/', email: 'anshurajwork@gmail.com' },
   { name: 'Amit Singh',  role: 'Backend / AI',    linkedin: 'https://www.linkedin.com/in/amit-singh-58101928a/', email: 'amitksingh3022@gmail.com' },
 ];

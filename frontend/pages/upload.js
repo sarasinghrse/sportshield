@@ -4,6 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import ProfileAvatar from '../components/ProfileAvatar';
+import Footer from '../components/landing/Footer';
 
 const API_URL    = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const MAX_SIZE_MB = 50;
@@ -388,6 +389,7 @@ export default function UploadPage() {
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

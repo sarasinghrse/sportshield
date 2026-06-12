@@ -17,7 +17,7 @@ const FEATURES = [
       'No manual searching required — runs silently in the background',
       'Real-time Firestore alerts pushed to your dashboard instantly',
     ],
-    cta: { label: 'Start Monitoring →', href: '/upload' },
+    cta: { label: 'Start Monitoring →', href: '/public-dashboard' },
   },
   {
     id: 'detect',
@@ -32,7 +32,7 @@ const FEATURES = [
       'Google Reverse Image + Google Lens double-check',
       'Confidence score per match (low / medium / high / critical)',
     ],
-    cta: { label: 'Upload an Asset →', href: '/upload' },
+    cta: { label: 'Upload an Asset →', href: '/public-dashboard' },
   },
   {
     id: 'dmca',
@@ -47,7 +47,7 @@ const FEATURES = [
       'PDF download for legal records',
       'Tracks takedown status — pending, sent, resolved',
     ],
-    cta: { label: 'View an Alert →', href: '/alerts' },
+    cta: { label: 'View an Alert →', href: '/public-dashboard' },
   },
   {
     id: 'cert',
@@ -62,7 +62,7 @@ const FEATURES = [
       'PDF download — legally admissible as evidence of prior art',
       'Unique asset ID stored immutably in Firebase',
     ],
-    cta: { label: 'View Certificate Demo →', href: '/certificate/demo' },
+    cta: { label: 'View Certificate Demo →', href: '/public-dashboard' },
   },
   {
     id: 'analytics',
@@ -77,7 +77,7 @@ const FEATURES = [
       'Severity breakdown (low / medium / high)',
       'Protection score — real-time health indicator',
     ],
-    cta: { label: 'See Analytics →', href: '/analytics' },
+    cta: { label: 'See Analytics →', href: '/public-dashboard' },
   },
   {
     id: 'verify',
@@ -122,7 +122,7 @@ const FEATURES = [
       'Returns confidence score: Authentic vs AI-Generated',
       'Shown on the asset detail page after scanning completes',
     ],
-    cta: { label: 'Upload & Detect →', href: '/upload' },
+    cta: { label: 'Upload & Detect →', href: '/public-dashboard' },
   },
   {
     id: 'social',
@@ -137,7 +137,7 @@ const FEATURES = [
       'Runs the full fingerprint + web scan pipeline',
       'Works on any public web page with embedded media',
     ],
-    cta: { label: 'Try Social Scan →', href: '/upload' },
+    cta: { label: 'Try Social Scan →', href: '/public-dashboard' },
   },
 ];
 
