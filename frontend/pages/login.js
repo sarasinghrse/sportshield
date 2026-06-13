@@ -263,10 +263,46 @@ export default function LoginPage() {
 
             {showAdmin && (
               <div style={{ marginTop: 14, padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
-                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginBottom: 10, textAlign: 'center' }}>
-                  Admin Email: DesiCodingClub@hack2skill.com &nbsp;|&nbsp; Code: SaraAnshuAmit
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
+                    <span>Email:</span>
+                    <code style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>DesiCodingClub@hack2skill.com</code>
+                    <button type="button" onClick={() => { navigator.clipboard.writeText('DesiCodingClub@hack2skill.com'); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex' }}
+                      title="Copy email">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
+                    <span>Code:</span>
+                    <code style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>SaraAnshuAmit</code>
+                    <button type="button" onClick={() => { navigator.clipboard.writeText('SaraAnshuAmit'); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex' }}
+                      title="Copy code">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setAdminLoading(true);
+                  setAdminError('');
+                  try {
+                    const res = await fetch(`${API_URL}/api/admin/login`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email: adminEmail, code: adminCode }),
+                    });
+                    if (res.ok) {
+                      sessionStorage.setItem('adminAuth', JSON.stringify({ email: adminEmail, code: adminCode }));
+                      router.push('/admin-dashboard');
+                    } else {
+                      setAdminError('Invalid email or code.');
+                    }
+                  } catch {
+                    setAdminError('Network error. Try again.');
+                  } finally { setAdminLoading(false); }
+                }} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <input
                     className="auth-input"
                     type="email"
@@ -286,29 +322,11 @@ export default function LoginPage() {
                   {adminError && <p style={{ color: '#f87171', fontSize: '0.78rem', textAlign: 'center' }}>{adminError}</p>}
                   <button
                     disabled={adminLoading}
-                    onClick={async () => {
-                      setAdminLoading(true);
-                      setAdminError('');
-                      try {
-                        const res = await fetch(`${API_URL}/api/admin/login`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: adminEmail, code: adminCode }),
-                        });
-                        if (res.ok) {
-                          sessionStorage.setItem('adminAuth', JSON.stringify({ email: adminEmail, code: adminCode }));
-                          router.push('/admin-dashboard');
-                        } else {
-                          setAdminError('Invalid email or code.');
-                        }
-                      } catch {
-                        setAdminError('Network error. Try again.');
-                      } finally { setAdminLoading(false); }
-                    }}
+                    type="submit"
                     style={{ background: '#1a5c1a', color: '#fff', border: 'none', borderRadius: 10, padding: '10px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}>
                     {adminLoading ? 'Verifying…' : 'Enter Admin Dashboard'}
                   </button>
-                </div>
+                </form>
               </div>
             )}
           </div>

@@ -129,20 +129,22 @@ export default function Onboarding() {
             </div>
 
             {/* Name input */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8 }}>
-                {accountType === 'individual' ? 'Your name' : 'Organisation name'}
-              </label>
-              <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)}
-                placeholder={accountType === 'individual' ? 'e.g. Priya Sharma' : 'e.g. Mumbai Cricket Club'}
-                className="ap-input" />
-            </div>
+            <form onSubmit={e => { e.preventDefault(); saveProfile(); }}>
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {accountType === 'individual' ? 'Your name' : 'Organisation name'}
+                </label>
+                <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)}
+                  placeholder={accountType === 'individual' ? 'e.g. Priya Sharma' : 'e.g. Mumbai Cricket Club'}
+                  className="ap-input" />
+              </div>
 
-            <button onClick={saveProfile} disabled={!accountType || !orgName.trim() || saving}
-              className="ap-btn ap-btn-green"
-              style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.95rem' }}>
-              {saving ? 'Saving…' : 'Continue →'}
-            </button>
+              <button type="submit" disabled={!accountType || !orgName.trim() || saving}
+                className="ap-btn ap-btn-green"
+                style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.95rem' }}>
+                {saving ? 'Saving…' : 'Continue →'}
+              </button>
+            </form>
           </>
         )}
 
