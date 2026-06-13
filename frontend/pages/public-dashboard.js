@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, subDays, startOfDay, format } from 'date-fns';
 import { subscribeToPublicAssets, subscribeToPublicAlerts } from '../lib/firebase';
+import { useAuth } from '../lib/useAuth';
 import Footer from '../components/landing/Footer';
 
 export default function PublicDashboard() {
+  const { user } = useAuth();
   const [assets,  setAssets]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [filter,  setFilter]  = useState('all');
@@ -31,6 +33,9 @@ export default function PublicDashboard() {
 
   const totalViolations = alerts.length;
   const violatedAssets  = assets.filter(a => (alertsByAsset[a.id]?.length || 0) > 0).length;
+  const communityScore = assets.length > 0
+    ? Math.round(((assets.length - violatedAssets) / assets.length) * 100)
+    : 100;
 
   return (
     <div className="ap-root">
@@ -44,11 +49,17 @@ export default function PublicDashboard() {
           <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Community</span>
         </div>
         <div className="ap-nav-right">
-          <Link href="/verify"  className="ap-nav-link">Verify URL</Link>
-          <Link href="/login"   className="ap-nav-link">Dashboard →</Link>
-          <Link href="/signup"  className="ap-btn ap-btn-green" style={{ padding: '8px 18px', fontSize: '0.78rem' }}>
-            Join Free
-          </Link>
+          <Link href="/verify" className="ap-nav-link">Verify URL</Link>
+          {user ? (
+            <Link href="/" className="ap-nav-link">My Dashboard →</Link>
+          ) : (
+            <>
+              <Link href="/login" className="ap-nav-link">Dashboard →</Link>
+              <Link href="/signup" className="ap-btn ap-btn-green" style={{ padding: '8px 18px', fontSize: '0.78rem' }}>
+                Join Free
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -72,8 +83,9 @@ export default function PublicDashboard() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 36 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 36 }}>
           {[
+            { label: 'Community Score',    value: `${communityScore}%`, accent: communityScore >= 70 ? 'rgba(74,222,128,0.2)' : 'rgba(245,158,11,0.2)' },
             { label: 'Assets Monitored',   value: assets.length,     accent: 'rgba(26,92,26,0.3)' },
             { label: 'Total Violations',   value: totalViolations,   accent: 'rgba(239,68,68,0.2)' },
             { label: 'Assets with Issues', value: violatedAssets,    accent: 'rgba(245,158,11,0.2)' },
@@ -201,8 +213,8 @@ export default function PublicDashboard() {
           </div>
         )}
 
-        {/* CTA */}
-        {!loading && filtered.length > 0 && (
+        {/* CTA — hide when logged in */}
+        {!loading && filtered.length > 0 && !user && (
           <div style={{ textAlign: 'center', marginTop: 56, padding: '40px 32px', background: 'rgba(26,92,26,0.12)', border: '1px solid rgba(26,92,26,0.28)', borderRadius: 16 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#fff', marginBottom: 12 }}>
               Protect Your Sports Media Too
@@ -215,6 +227,64 @@ export default function PublicDashboard() {
               <Link href="/verify" className="ap-btn ap-btn-ghost">Verify a URL</Link>
             </div>
           </div>
+        )}
+        {/* ── Community Analytics ── */}
+        {!loading && assets.length > 0 && (
+          <section style={{ marginTop: 56 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 24 }}>
+              Community Analytics
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="ap-card" style={{ padding: 24 }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+                  Violations by Platform
+                </p>
+                {(() => {
+                  const platformMap = {};
+                  alerts.forEach(a => {
+                    try {
+                      const host = new URL(a.foundUrl || 'http://unknown').hostname.replace('www.', '');
+                      platformMap[host] = (platformMap[host] || 0) + 1;
+                    } catch { platformMap['unknown'] = (platformMap['unknown'] || 0) + 1; }
+                  });
+                  const sorted = Object.entries(platformMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+                  if (sorted.length === 0) return <p className="ap-muted" style={{ fontSize: '0.85rem' }}>No violations yet</p>;
+                  const max = sorted[0][1];
+                  return sorted.map(([platform, count]) => (
+                    <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', minWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{platform}</span>
+                      <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
+                        <div style={{ width: `${(count / max) * 100}%`, height: '100%', borderRadius: 4, background: '#1a5c1a' }} />
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.78rem', color: '#4ade80', minWidth: 24 }}>{count}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+              <div className="ap-card" style={{ padding: 24 }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+                  Protection Overview
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.06)', borderRadius: 10, border: '1px solid rgba(74,222,128,0.15)' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#4ade80' }}>{assets.length - violatedAssets}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Clean Assets</div>
+                  </div>
+                  <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#f87171' }}>{violatedAssets}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>With Violations</div>
+                  </div>
+                  <div style={{ padding: '14px 16px', background: 'rgba(26,92,26,0.1)', borderRadius: 10, border: '1px solid rgba(26,92,26,0.25)', gridColumn: 'span 2' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: communityScore >= 70 ? '#4ade80' : '#fbbf24' }}>{communityScore}%</div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Community Protection Score</div>
+                    <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
+                      Percentage of monitored assets with no violations detected
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         )}
       </main>
 

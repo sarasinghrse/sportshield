@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
@@ -78,37 +78,32 @@ export default function SettingsPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/trusted-domains`)
-      .then(r => r.json())
-      .then(data => setTrustedDomains(data.domains || []))
-      .catch(() => {})
-      .finally(() => setLoadingDomains(false));
-  }, []);
+    if (!user) return;
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      const data = snap.data();
+      if (data?.trustedDomains) setTrustedDomains(data.trustedDomains);
+    }).catch(() => {}).finally(() => setLoadingDomains(false));
+  }, [user]);
 
   const addDomain = async () => {
-    const d = newDomain.trim();
-    if (!d) return;
+    const d = newDomain.trim().toLowerCase();
+    if (!d || !user) return;
+    if (trustedDomains.includes(d)) { toast.error('Domain already added'); return; }
+    const updated = [...trustedDomains, d];
     try {
-      const res = await fetch(`${API_URL}/api/settings/trusted-domains`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: d }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Failed');
-      setTrustedDomains(data.domains);
+      await setDoc(doc(db, 'users', user.uid), { trustedDomains: updated }, { merge: true });
+      setTrustedDomains(updated);
       setNewDomain('');
-      toast.success(data.message);
+      toast.success(`Added ${d}`);
     } catch (err) { toast.error(err.message); }
   };
 
   const removeDomain = async (domain) => {
+    if (!user) return;
+    const updated = trustedDomains.filter(d => d !== domain);
     try {
-      const res = await fetch(`${API_URL}/api/settings/trusted-domains`, {
-        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
-      });
-      const data = await res.json();
-      setTrustedDomains(data.domains);
+      await setDoc(doc(db, 'users', user.uid), { trustedDomains: updated }, { merge: true });
+      setTrustedDomains(updated);
       toast.success(`Removed ${domain}`);
     } catch { toast.error('Failed to remove domain'); }
   };

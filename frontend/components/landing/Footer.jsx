@@ -1,5 +1,6 @@
 // components/landing/Footer.jsx
 import Link from 'next/link';
+import { useAuth } from '../../lib/useAuth';
 
 const TEAM = [
   {
@@ -49,6 +50,7 @@ const aboutLinks = [
 ];
 
 export default function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="ss-footer">
       <div className="ss-footer-grid">
@@ -76,10 +78,12 @@ export default function Footer() {
             </a>
           </div>
 
-          <div className="ss-footer-btns">
-            <Link href="/signup" className="ss-footer-btn-signup">Sign Up</Link>
-            <Link href="/login"  className="ss-footer-btn-login">Login</Link>
-          </div>
+          {!user && (
+            <div className="ss-footer-btns">
+              <Link href="/signup" className="ss-footer-btn-signup">Sign Up</Link>
+              <Link href="/login"  className="ss-footer-btn-login">Login</Link>
+            </div>
+          )}
         </div>
 
         {/* Features */}

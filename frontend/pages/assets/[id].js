@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { db, subscribeToScanResults, setAssetVisibility } from '../../lib/firebase';
 import Footer from '../../components/landing/Footer';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -203,6 +203,27 @@ export default function AssetDetail() {
               {/* Visibility toggle */}
               <button onClick={toggleVisibility} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: isPublic ? '#4ade80' : 'rgba(255,255,255,0.4)', textDecoration: 'none', border: `1px solid ${isPublic ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.15)'}`, borderRadius: 20, padding: '3px 10px', background: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
                 {isPublic ? 'Public' : 'Private'}
+              </button>
+              {/* Manual scan */}
+              <button onClick={async () => {
+                try {
+                  toast.loading('Triggering scan…', { id: 'scan' });
+                  await fetch(`${API_URL}/api/media/scan/${id}`, { method: 'POST' });
+                  toast.success('Scan started!', { id: 'scan' });
+                } catch { toast.error('Failed to trigger scan', { id: 'scan' }); }
+              }} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 20, padding: '3px 10px', background: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
+                Scan Now
+              </button>
+              {/* Delete asset */}
+              <button onClick={async () => {
+                if (!confirm('Delete this asset? This removes it from your dashboard and the community dashboard.')) return;
+                try {
+                  await deleteDoc(doc(db, 'assets', id));
+                  toast.success('Asset deleted');
+                  router.push('/');
+                } catch { toast.error('Failed to delete asset'); }
+              }} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 20, padding: '3px 10px', background: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
+                Delete
               </button>
             </div>
           </div>

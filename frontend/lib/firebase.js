@@ -29,63 +29,26 @@ function getCurrentUserId() {
 
 export function subscribeToAssets(callback) {
   const userId = getCurrentUserId();
-  // Subscribe to both current user AND demo_user data
-  const userIds = userId === DEMO_USER ? [DEMO_USER] : [userId, DEMO_USER];
-
-  const unsubs = userIds.map(uid => {
-    const q = query(
-      collection(db, 'assets'),
-      where('userId', '==', uid),
-      orderBy('uploadedAt', 'desc')
-    );
-    return onSnapshot(q, () => {});
+  const q = query(
+    collection(db, 'assets'),
+    where('userId', '==', userId),
+    orderBy('uploadedAt', 'desc')
+  );
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
-
-  // Merged subscription
-  let allAssets = {};
-  const unsubs2 = userIds.map(uid => {
-    const q = query(
-      collection(db, 'assets'),
-      where('userId', '==', uid),
-      orderBy('uploadedAt', 'desc')
-    );
-    return onSnapshot(q, snap => {
-      snap.docs.forEach(d => { allAssets[d.id] = { id: d.id, ...d.data() }; });
-      const sorted = Object.values(allAssets).sort((a, b) => {
-        const ta = a.uploadedAt?.toDate?.()?.getTime?.() || 0;
-        const tb = b.uploadedAt?.toDate?.()?.getTime?.() || 0;
-        return tb - ta;
-      });
-      callback(sorted);
-    });
-  });
-
-  return () => { unsubs.forEach(u => u()); unsubs2.forEach(u => u()); };
 }
 
 export function subscribeToAlerts(callback) {
   const userId = getCurrentUserId();
-  const userIds = userId === DEMO_USER ? [DEMO_USER] : [userId, DEMO_USER];
-
-  let allAlerts = {};
-  const unsubs = userIds.map(uid => {
-    const q = query(
-      collection(db, 'alerts'),
-      where('userId', '==', uid),
-      orderBy('createdAt', 'desc')
-    );
-    return onSnapshot(q, snap => {
-      snap.docs.forEach(d => { allAlerts[d.id] = { id: d.id, ...d.data() }; });
-      const sorted = Object.values(allAlerts).sort((a, b) => {
-        const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
-        const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
-        return tb - ta;
-      });
-      callback(sorted);
-    });
+  const q = query(
+    collection(db, 'alerts'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
-
-  return () => unsubs.forEach(u => u());
 }
 
 export function subscribeToScanResults(assetId, callback) {

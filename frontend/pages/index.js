@@ -47,7 +47,21 @@ export default function Dashboard() {
   const totalMatches = assets.reduce((s, a) => s + (a.matchCount || 0), 0);
   const scanning     = assets.filter(a => a.status === 'scanning').length;
 
-  const protectionScore = Math.max(0, 100 - unread * 10 - scanning * 5);
+  const protectionScore = (() => {
+    if (assets.length === 0) return 0;
+    let score = 100;
+    if (unread > 0) score -= Math.min(30, unread * 10);
+    if (scanning > 0) score -= Math.min(10, scanning * 5);
+    const scannedRatio = assets.filter(a => a.status === 'complete').length / assets.length;
+    score -= Math.round((1 - scannedRatio) * 20);
+    const matchRatio = totalMatches / Math.max(1, assets.length);
+    score -= Math.min(20, Math.round(matchRatio * 10));
+    const hasWhatsApp = false;
+    const hasExtension = false;
+    if (!hasWhatsApp) score -= 5;
+    if (!hasExtension) score -= 5;
+    return Math.max(0, Math.min(100, score));
+  })();
   const ringColor =
     protectionScore >= 80 ? '#3caa3c'
     : protectionScore >= 50 ? '#d97706'
@@ -236,7 +250,7 @@ export default function Dashboard() {
                   ? 'Some alerts need your attention.'
                   : 'High risk — review your alerts now.'}
               </p>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <Link href="/analytics" style={{
                   fontSize: '0.78rem', color: '#3caa3c',
                   border: '1px solid rgba(60,170,60,0.3)', borderRadius: 6,
@@ -251,6 +265,21 @@ export default function Dashboard() {
                     padding: '5px 12px', textDecoration: 'none',
                     fontFamily: "'Barlow', sans-serif", fontWeight: 600,
                   }}>{unread} Unread Alert{unread !== 1 ? 's' : ''}</Link>
+                )}
+                {assets.length > 0 && (
+                  <button onClick={async () => {
+                    try {
+                      for (const a of assets) {
+                        await fetch(`${API}/api/media/scan/${a.id}`, { method: 'POST' }).catch(() => {});
+                      }
+                      toast && toast.success ? toast.success('Scans triggered for all assets') : alert('Scans triggered!');
+                    } catch {}
+                  }} style={{
+                    fontSize: '0.78rem', color: '#34d399',
+                    border: '1px solid rgba(52,211,153,0.3)', borderRadius: 6,
+                    padding: '5px 12px', background: 'none', cursor: 'pointer',
+                    fontFamily: "'Barlow', sans-serif", fontWeight: 600,
+                  }}>Scan All</button>
                 )}
               </div>
             </div>
@@ -301,7 +330,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Browser Extension + WhatsApp Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, alignItems: 'stretch' }}>
 
             {/* Extension CTA */}
             <div className="db-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>

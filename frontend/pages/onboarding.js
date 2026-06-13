@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
-import Footer from '../components/landing/Footer';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -210,7 +209,6 @@ export default function Onboarding() {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   );
 }

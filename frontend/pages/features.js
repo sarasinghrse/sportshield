@@ -17,7 +17,7 @@ const FEATURES = [
       'No manual searching required — runs silently in the background',
       'Real-time Firestore alerts pushed to your dashboard instantly',
     ],
-    cta: { label: 'Start Monitoring →', href: '/public-dashboard' },
+    cta: { label: 'Start Monitoring →', href: '/signup' },
   },
   {
     id: 'detect',
@@ -32,7 +32,7 @@ const FEATURES = [
       'Google Reverse Image + Google Lens double-check',
       'Confidence score per match (low / medium / high / critical)',
     ],
-    cta: { label: 'Upload an Asset →', href: '/public-dashboard' },
+    cta: { label: 'Upload an Asset →', href: '/signup' },
   },
   {
     id: 'dmca',
@@ -47,7 +47,7 @@ const FEATURES = [
       'PDF download for legal records',
       'Tracks takedown status — pending, sent, resolved',
     ],
-    cta: { label: 'View an Alert →', href: '/public-dashboard' },
+    cta: { label: 'View an Alert →', href: '/dmca-notice' },
   },
   {
     id: 'cert',
@@ -62,7 +62,7 @@ const FEATURES = [
       'PDF download — legally admissible as evidence of prior art',
       'Unique asset ID stored immutably in Firebase',
     ],
-    cta: { label: 'View Certificate Demo →', href: '/public-dashboard' },
+    cta: null,
   },
   {
     id: 'analytics',
@@ -77,7 +77,7 @@ const FEATURES = [
       'Severity breakdown (low / medium / high)',
       'Protection score — real-time health indicator',
     ],
-    cta: { label: 'See Analytics →', href: '/public-dashboard' },
+    cta: { label: 'Start Analysing →', href: '/login' },
   },
   {
     id: 'verify',
@@ -122,7 +122,7 @@ const FEATURES = [
       'Returns confidence score: Authentic vs AI-Generated',
       'Shown on the asset detail page after scanning completes',
     ],
-    cta: { label: 'Upload & Detect →', href: '/public-dashboard' },
+    cta: { label: 'Upload & Detect →', href: '/signup' },
   },
   {
     id: 'social',
@@ -137,7 +137,7 @@ const FEATURES = [
       'Runs the full fingerprint + web scan pipeline',
       'Works on any public web page with embedded media',
     ],
-    cta: { label: 'Try Social Scan →', href: '/public-dashboard' },
+    cta: { label: 'Try Social Scan →', href: '/verify' },
   },
 ];
 
@@ -164,13 +164,13 @@ export default function FeaturesPage() {
             One platform to monitor, detect, protect, and prove your sports media ownership — using free-tier AI tools that punch above their weight.
           </p>
           {/* Quick jump pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, maxWidth: 720, margin: '0 auto' }}>
             {FEATURES.map(f => (
               <a key={f.id} href={`#${f.id}`}
-                style={{ background: 'rgba(26,92,26,0.2)', border: '1px solid rgba(26,92,26,0.4)', borderRadius: 20, padding: '6px 14px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', transition: 'color 0.2s,border-color 0.2s' }}
-                onMouseEnter={e => { e.target.style.color = '#4ade80'; e.target.style.borderColor = 'rgba(74,222,128,0.5)'; }}
-                onMouseLeave={e => { e.target.style.color = 'rgba(255,255,255,0.7)'; e.target.style.borderColor = 'rgba(26,92,26,0.4)'; }}>
-                {f.icon} {f.title}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(26,92,26,0.2)', border: '1px solid rgba(26,92,26,0.4)', borderRadius: 10, padding: '10px 14px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', transition: 'color 0.2s,border-color 0.2s,background 0.2s', textAlign: 'center' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#4ade80'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.5)'; e.currentTarget.style.background = 'rgba(26,92,26,0.35)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(26,92,26,0.4)'; e.currentTarget.style.background = 'rgba(26,92,26,0.2)'; }}>
+                {f.title}
               </a>
             ))}
           </div>
@@ -204,9 +204,11 @@ export default function FeaturesPage() {
                 </h2>
                 <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: f.color, marginBottom: 18 }}>{f.subtitle}</p>
                 <p className="ap-muted" style={{ fontSize: '0.95rem', lineHeight: 1.8, marginBottom: 24 }}>{f.desc}</p>
-                <Link href={f.cta.href} className="ap-btn ap-btn-green" style={{ fontSize: '0.85rem' }}>
-                  {f.cta.label}
-                </Link>
+                {f.cta && (
+                  <Link href={f.cta.href} className="ap-btn ap-btn-green" style={{ fontSize: '0.85rem' }}>
+                    {f.cta.label}
+                  </Link>
+                )}
               </div>
 
               {/* Bullet card */}
@@ -224,6 +226,58 @@ export default function FeaturesPage() {
             </div>
           </section>
         ))}
+
+        {/* ── Tech Stack ── */}
+        <section style={{ padding: 'clamp(56px,6vw,88px) 24px', borderBottom: '1px solid rgba(26,92,26,0.15)' }}>
+          <div style={{ maxWidth: 1020, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 'clamp(1.8rem,4vw,2.4rem)', color: '#fff', marginBottom: 12 }}>
+                Built With
+              </h2>
+              <p className="ap-muted" style={{ maxWidth: 520, margin: '0 auto', fontSize: '0.95rem', lineHeight: 1.7 }}>
+                SportShield is built on Google Cloud and open-source tools — most running on free tiers.
+              </p>
+            </div>
+
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>Google Technologies</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 32 }}>
+              {[
+                { name: 'Firebase Auth', desc: 'Google sign-in & user management' },
+                { name: 'Cloud Firestore', desc: 'Real-time NoSQL database' },
+                { name: 'Firebase Hosting', desc: 'Frontend deployment' },
+                { name: 'Gemini 2.0 Flash', desc: 'AI assistant chat' },
+                { name: 'Google Lens API', desc: 'Reverse image search fallback' },
+                { name: 'Google Cloud Run', desc: 'Serverless backend hosting' },
+                { name: 'SerpAPI (Google)', desc: 'Reverse image search' },
+                { name: 'Chrome Extension', desc: 'Manifest V3 browser extension' },
+              ].map(t => (
+                <div key={t.name} className="ap-card" style={{ padding: '14px 16px' }}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginBottom: 3 }}>{t.name}</p>
+                  <p className="ap-muted" style={{ fontSize: '0.75rem', lineHeight: 1.5 }}>{t.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>Other Tools</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {[
+                { name: 'Next.js', desc: 'React framework for frontend' },
+                { name: 'FastAPI (Python)', desc: 'Backend REST API' },
+                { name: 'pHash', desc: 'Perceptual image fingerprinting' },
+                { name: 'HuggingFace', desc: 'AI-generated image detection' },
+                { name: 'Twilio', desc: 'WhatsApp alert notifications' },
+                { name: 'Brevo', desc: 'Transactional email delivery' },
+                { name: 'Render', desc: 'Backend deployment' },
+                { name: 'Vercel', desc: 'Frontend deployment' },
+              ].map(t => (
+                <div key={t.name} className="ap-card" style={{ padding: '14px 16px' }}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginBottom: 3 }}>{t.name}</p>
+                  <p className="ap-muted" style={{ fontSize: '0.75rem', lineHeight: 1.5 }}>{t.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* ── CTA ── */}
         <section style={{ textAlign: 'center', padding: 'clamp(56px,7vw,96px) 24px', background: 'linear-gradient(180deg,#0a1710,#0d2010)' }}>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import ProfileAvatar from '../components/ProfileAvatar';
 import Footer from '../components/landing/Footer';
 import { subDays, startOfDay, format } from 'date-fns';
@@ -8,10 +9,17 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { subscribeToAlerts, subscribeToAssets } from '../lib/firebase';
+import { useAuth } from '../lib/useAuth';
 
 export default function AnalyticsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [alerts, setAlerts] = useState([]);
   const [assets, setAssets] = useState([]);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace('/login');
+  }, [user, authLoading]);
 
   useEffect(() => {
     const u1 = subscribeToAlerts(setAlerts);

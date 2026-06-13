@@ -24,6 +24,10 @@ export default function UploadPage() {
   const [dragOver,        setDragOver]       = useState(false);
   const [isPublic,        setIsPublic]       = useState(true);
 
+  /* Scan & lifetime settings */
+  const [scanRate,        setScanRate]       = useState('upload');
+  const [assetLifetime,   setAssetLifetime]  = useState('1year');
+
   /* Social URL */
   const [socialUrl,       setSocialUrl]      = useState('');
   const [socialLabel,     setSocialLabel]    = useState('');
@@ -78,7 +82,7 @@ export default function UploadPage() {
       setUploadProgress(100);
       setUploadedAsset(data);
       const id = data.id || data.assetId;
-      if (id) await updateDoc(doc(db, 'assets', id), { isPublic });
+      if (id) await updateDoc(doc(db, 'assets', id), { isPublic, scanRate, assetLifetime });
       toast.success(isPublic ? 'Asset registered! Visible on Community Dashboard.' : 'Asset registered privately!');
     } catch (err) {
       clearInterval(iv);
@@ -107,7 +111,7 @@ export default function UploadPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
       const id = data.id || data.assetId;
-      if (id) await updateDoc(doc(db, 'assets', id), { isPublic });
+      if (id) await updateDoc(doc(db, 'assets', id), { isPublic, scanRate, assetLifetime });
       setSocialResult(data);
       toast.success('Image extracted and scan started!');
     } catch (err) {
@@ -297,6 +301,34 @@ export default function UploadPage() {
                   <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
                   <span className="ap-toggle-slider" />
                 </label>
+              </div>
+
+              {/* Scan Rate & Asset Lifetime */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 16 }}>
+                <div className="ap-card" style={{ padding: '16px 18px' }}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: '#fff', marginBottom: 8 }}>Scan Rate</p>
+                  <select value={scanRate} onChange={e => setScanRate(e.target.value)} className="ap-input" style={{ cursor: 'pointer', fontSize: '0.82rem' }}>
+                    <option value="upload">Only on upload</option>
+                    <option value="hourly">Hourly</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                  <p className="ap-muted" style={{ fontSize: '0.7rem', marginTop: 6 }}>How often we re-scan the web for copies</p>
+                </div>
+                <div className="ap-card" style={{ padding: '16px 18px' }}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: '#fff', marginBottom: 8 }}>Asset Lifetime</p>
+                  <select value={assetLifetime} onChange={e => setAssetLifetime(e.target.value)} className="ap-input" style={{ cursor: 'pointer', fontSize: '0.82rem' }}>
+                    <option value="once">One time</option>
+                    <option value="1day">1 day</option>
+                    <option value="1week">1 week</option>
+                    <option value="1month">1 month</option>
+                    <option value="1year">1 year</option>
+                    <option value="permanent">Permanent</option>
+                  </select>
+                  <p className="ap-muted" style={{ fontSize: '0.7rem', marginTop: 6 }}>How long we keep monitoring this asset</p>
+                </div>
               </div>
 
               <button onClick={handleUpload} disabled={!selectedFile || uploading} className="ap-btn ap-btn-green"
