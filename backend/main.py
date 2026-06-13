@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import media, alerts, contact, whatsapp, settings, gemini, admin
+from routers import media, alerts, contact, whatsapp, settings, gemini, admin, url_monitor, reports
 from services.scheduler import start_scheduler
 
 app = FastAPI(title="SportShield API")
@@ -24,6 +24,8 @@ app.include_router(whatsapp.router, prefix="/api/whatsapp")
 app.include_router(settings.router, prefix="/api/settings")
 app.include_router(gemini.router, prefix="/api/gemini")
 app.include_router(admin.router, prefix="/api/admin")
+app.include_router(url_monitor.router, prefix="/api/url-monitor")
+app.include_router(reports.router, prefix="/api/reports")
 
 @app.get("/health")
 def health():

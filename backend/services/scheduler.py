@@ -35,11 +35,33 @@ def rescan_all_assets():
 
 _scheduler = None
 
+def _run_url_checks():
+    logger.info("Scheduler: starting URL watchlist checks")
+    try:
+        from services.url_checker import check_all_watched_urls_sync
+        check_all_watched_urls_sync()
+        logger.info("Scheduler: URL watchlist checks complete")
+    except Exception as e:
+        logger.error(f"Scheduler: URL checks failed — {e}")
+
+
+def _run_weekly_reports():
+    logger.info("Scheduler: generating weekly reports")
+    try:
+        from services.report_generator import generate_all_weekly_reports_sync
+        generate_all_weekly_reports_sync()
+        logger.info("Scheduler: weekly reports complete")
+    except Exception as e:
+        logger.error(f"Scheduler: weekly reports failed — {e}")
+
+
 def start_scheduler():
     global _scheduler
     if _scheduler is not None:
         return
     _scheduler = BackgroundScheduler()
     _scheduler.add_job(rescan_all_assets, "interval", hours=24, id="daily_rescan")
+    _scheduler.add_job(_run_url_checks, "interval", hours=6, id="url_watchlist_check")
+    _scheduler.add_job(_run_weekly_reports, "cron", day_of_week="mon", hour=8, id="weekly_reports")
     _scheduler.start()
-    logger.info("Scheduler: started — daily rescan every 24 hours")
+    logger.info("Scheduler: started — daily rescan, 6h URL checks, weekly reports (Mon 8am UTC)")

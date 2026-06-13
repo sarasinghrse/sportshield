@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from services.firebase_client import db
+from services.smart_summary import get_or_generate_summary
 
 router = APIRouter()
 
@@ -12,3 +13,8 @@ def list_alerts():
 def mark_read(alert_id: str):
     db.collection("alerts").document(alert_id).update({"isRead": True})
     return {"status": "ok"}
+
+@router.get("/{alert_id}/summary")
+async def alert_summary(alert_id: str):
+    summary = await get_or_generate_summary(alert_id)
+    return {"summary": summary}

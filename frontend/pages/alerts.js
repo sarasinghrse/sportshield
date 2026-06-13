@@ -18,15 +18,29 @@ function setTakedownStatus(alertId, status) {
   return updateDoc(doc(db, 'alerts', alertId), { takedownStatus: status });
 }
 
+const ALERT_API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function AlertsPage() {
   const [alerts,     setAlerts]     = useState([]);
   const [filter,     setFilter]     = useState('all');
   const [markingAll, setMarkingAll] = useState(false);
+  const [summaries,  setSummaries]  = useState({});
 
   useEffect(() => {
     const unsub = subscribeToAlerts(setAlerts);
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    alerts.forEach(a => {
+      if (a.smartSummary) { setSummaries(s => ({ ...s, [a.id]: a.smartSummary })); return; }
+      if (summaries[a.id]) return;
+      fetch(`${ALERT_API}/api/alerts/${a.id}/summary`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.summary) setSummaries(s => ({ ...s, [a.id]: data.summary })); })
+        .catch(() => {});
+    });
+  }, [alerts]);
 
   const unreadCount = alerts.filter(a => !a.isRead).length;
   const filtered = alerts.filter(a => {
@@ -121,7 +135,7 @@ export default function AlertsPage() {
           </div>
         ) : (
           <div>
-            {filtered.map(alert => <AlertCard key={alert.id} alert={alert} />)}
+            {filtered.map(alert => <AlertCard key={alert.id} alert={alert} summary={summaries[alert.id]} />)}
           </div>
         )}
       </main>
@@ -129,7 +143,7 @@ export default function AlertsPage() {
   );
 }
 
-function AlertCard({ alert }) {
+function AlertCard({ alert, summary }) {
   const createdAt  = alert.createdAt?.toDate?.() || new Date();
   const confidence = Math.round((alert.confidence || 0) * 100);
   const isHigh     = alert.severity === 'high';
@@ -179,7 +193,7 @@ function AlertCard({ alert }) {
       {/* Body */}
       <div className="ap-alert-card-body">
         <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.05rem', color: '#fff', marginBottom: 10, letterSpacing: '0.01em' }}>
-          Unauthorized use detected — {confidence}% confidence
+          {summary || `Unauthorized use detected — ${confidence}% confidence`}
         </p>
 
         {/* Confidence bar */}

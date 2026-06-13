@@ -5,6 +5,7 @@ import { subscribeToAssets, subscribeToAlerts, markAlertRead } from '../lib/fire
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
 import Footer from '../components/landing/Footer';
+import { DEMO_ASSETS, DEMO_ALERTS, DEMO_PROFILE, DEMO_WATCHED_URLS } from '../lib/demoData';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -24,21 +25,57 @@ const C = {
 };
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const isDemo = router.query.demo === 'true';
   const [assets,  setAssets]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const [watchedUrls, setWatchedUrls] = useState([]);
+  const [newWatchUrl, setNewWatchUrl] = useState('');
+  const [newWatchLabel, setNewWatchLabel] = useState('');
+  const [watchLoading, setWatchLoading] = useState(false);
+  const [summaries, setSummaries] = useState({});
+
+  const activeProfile = isDemo ? DEMO_PROFILE : profile;
 
   useEffect(() => {
+    if (isDemo) return;
     if (!authLoading && !user) router.replace('/landing');
-  }, [user, authLoading]);
+  }, [user, authLoading, isDemo]);
 
   useEffect(() => {
+    if (isDemo) {
+      setAssets(DEMO_ASSETS);
+      setAlerts(DEMO_ALERTS);
+      setWatchedUrls(DEMO_WATCHED_URLS);
+      setLoading(false);
+      return;
+    }
     const unsubAssets = subscribeToAssets(data => { setAssets(data); setLoading(false); });
     const unsubAlerts = subscribeToAlerts(data => setAlerts(data));
     return () => { unsubAssets(); unsubAlerts(); };
-  }, []);
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (isDemo || !user) return;
+    fetch(`${API}/api/url-monitor/list?user_id=${user.uid}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setWatchedUrls(data.urls || []))
+      .catch(() => {});
+  }, [user, isDemo]);
+
+  useEffect(() => {
+    const visible = alerts.filter(a => !a.isRead).slice(0, 3);
+    visible.forEach(a => {
+      if (a.smartSummary) { setSummaries(s => ({ ...s, [a.id]: a.smartSummary })); return; }
+      if (summaries[a.id]) return;
+      fetch(`${API}/api/alerts/${a.id}/summary`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.summary) setSummaries(s => ({ ...s, [a.id]: data.summary })); })
+        .catch(() => {});
+    });
+  }, [alerts]);
 
   const unread       = alerts.filter(a => !a.isRead).length;
   const totalMatches = assets.reduce((s, a) => s + (a.matchCount || 0), 0);
@@ -189,6 +226,7 @@ export default function Dashboard() {
             <Link href="/radar" className="db-nav-link">Live Radar</Link>
             <Link href="/public-dashboard" className="db-nav-link">Community</Link>
             <Link href="/analytics" className="db-nav-link">Analytics</Link>
+            <Link href="/reports"   className="db-nav-link">Reports</Link>
             <Link href="/settings"  className="db-nav-link">Settings</Link>
             <Link href="/upload"    className="db-upload-btn" style={{ marginLeft: 8 }}>+ Upload</Link>
             <ProfileAvatar />
@@ -210,6 +248,17 @@ export default function Dashboard() {
         </nav>
 
         <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
+
+          {/* ── Demo Banner ── */}
+          {isDemo && (
+            <div style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, padding: '10px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.78rem', color: '#4ade80', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Demo Mode</span>
+                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>— Viewing sample data. No login required.</span>
+              </div>
+              <Link href="/" style={{ fontSize: '0.78rem', color: '#4ade80', fontWeight: 700, textDecoration: 'none' }}>Exit Demo ×</Link>
+            </div>
+          )}
 
           {/* ── Protection Score ── */}
           <div className="db-card" style={{ padding: '24px 28px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -313,7 +362,7 @@ export default function Dashboard() {
                     <span style={{ flexShrink: 0, color: '#f87171', display:'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', marginBottom: 3 }}>
-                        {pct}% confidence — unauthorized copy detected
+                        {summaries[alert.id] || `${pct}% confidence — unauthorized copy detected`}
                       </p>
                       <p style={{ fontSize: '0.78rem', color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {alert.foundUrl}
@@ -469,6 +518,105 @@ export default function Dashboard() {
                 Free · No signup · Works on any WhatsApp
               </p>
             </div>
+          </div>
+
+          {/* ── URL Watchlist ── */}
+          <section style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span className="db-section-title">URL Watchlist</span>
+              <span style={{ fontSize: '0.78rem', color: C.muted }}>{watchedUrls.length} monitored</span>
+            </div>
+            <div className="db-card" style={{ padding: '20px 24px' }}>
+              <form onSubmit={async e => {
+                e.preventDefault();
+                if (!newWatchUrl.trim()) return;
+                if (isDemo) { setWatchedUrls(prev => [{ url: newWatchUrl, label: newWatchLabel || 'Untitled', addedAt: { toDate: () => new Date() }, lastCheckedAt: null, status: 'active', lastResult: null }, ...prev]); setNewWatchUrl(''); setNewWatchLabel(''); return; }
+                setWatchLoading(true);
+                try {
+                  const res = await fetch(`${API}/api/url-monitor/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: newWatchUrl, label: newWatchLabel || 'Untitled', user_id: user.uid }) });
+                  if (res.ok) { const data = await res.json(); setWatchedUrls(data.urls || []); setNewWatchUrl(''); setNewWatchLabel(''); }
+                } catch {} finally { setWatchLoading(false); }
+              }} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <input placeholder="URL to monitor..." value={newWatchUrl} onChange={e => setNewWatchUrl(e.target.value)} style={{ flex: 2, background: 'rgba(10,18,16,0.6)', border: '1px solid rgba(26,92,26,0.35)', borderRadius: 8, padding: '9px 14px', color: '#d4e8d4', fontSize: '0.82rem', outline: 'none', fontFamily: "'Barlow', sans-serif" }} />
+                <input placeholder="Label (optional)" value={newWatchLabel} onChange={e => setNewWatchLabel(e.target.value)} style={{ flex: 1, background: 'rgba(10,18,16,0.6)', border: '1px solid rgba(26,92,26,0.35)', borderRadius: 8, padding: '9px 14px', color: '#d4e8d4', fontSize: '0.82rem', outline: 'none', fontFamily: "'Barlow', sans-serif" }} />
+                <button type="submit" disabled={watchLoading || !newWatchUrl.trim()} style={{ background: '#1a5c1a', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.82rem', letterSpacing: '0.04em', opacity: watchLoading || !newWatchUrl.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+                  {watchLoading ? '...' : '+ Add'}
+                </button>
+              </form>
+              {watchedUrls.length === 0 ? (
+                <p style={{ textAlign: 'center', color: C.muted, fontSize: '0.82rem', padding: '12px 0' }}>No URLs being monitored yet. Add one above to start tracking.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {watchedUrls.map((w, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'rgba(26,92,26,0.08)', borderRadius: 8, border: '1px solid rgba(26,92,26,0.15)' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: w.status === 'active' ? '#4ade80' : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{w.url}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
+                          <span>{w.label}</span>
+                          {w.lastResult && (
+                            <>
+                              <span>·</span>
+                              <span style={{ color: w.lastResult.accessible ? '#4ade80' : '#f87171' }}>{w.lastResult.accessible ? 'Online' : `Down (${w.lastResult.statusCode})`}</span>
+                              {w.lastResult.changed && <span style={{ color: '#fbbf24', fontWeight: 700 }}>CHANGED</span>}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 10, background: w.status === 'active' ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)', color: w.status === 'active' ? '#4ade80' : 'rgba(255,255,255,0.3)', border: `1px solid ${w.status === 'active' ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.08)'}`, fontWeight: 700, textTransform: 'uppercase' }}>{w.status}</span>
+                      {!isDemo && (
+                        <button onClick={async () => {
+                          try {
+                            await fetch(`${API}/api/url-monitor/remove`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: w.url, user_id: user.uid }) });
+                            setWatchedUrls(prev => prev.filter((_, j) => j !== i));
+                          } catch {}
+                        }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 6px' }} title="Remove">✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!isDemo && watchedUrls.length > 0 && (
+                <button onClick={async () => {
+                  setWatchLoading(true);
+                  try {
+                    await fetch(`${API}/api/url-monitor/check/${user.uid}`, { method: 'POST' });
+                    const res = await fetch(`${API}/api/url-monitor/list?user_id=${user.uid}`);
+                    if (res.ok) { const data = await res.json(); setWatchedUrls(data.urls || []); }
+                  } catch {} finally { setWatchLoading(false); }
+                }} disabled={watchLoading} style={{ marginTop: 12, background: 'rgba(26,92,26,0.2)', border: '1px solid rgba(26,92,26,0.3)', color: '#4ade80', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.78rem', letterSpacing: '0.04em', opacity: watchLoading ? 0.5 : 1 }}>
+                  {watchLoading ? 'Checking...' : 'Check All Now'}
+                </button>
+              )}
+            </div>
+          </section>
+
+          {/* ── View Demo ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+            {(activeProfile?.accountType === 'club' || !activeProfile?.accountType) && (
+              <Link href="/sports-club-demo" className="db-card" style={{ padding: '22px 24px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.2s' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(26,92,26,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/></svg>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 2 }}>Sports Club Demo</p>
+                  <p style={{ fontSize: '0.78rem', color: C.muted }}>See how clubs protect media at scale</p>
+                </div>
+                <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '1.2rem' }}>→</span>
+              </Link>
+            )}
+            {(activeProfile?.accountType === 'individual' || !activeProfile?.accountType) && (
+              <Link href="/individual-demo" className="db-card" style={{ padding: '22px 24px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.2s' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(26,92,26,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 2 }}>Individual Athlete Demo</p>
+                  <p style={{ fontSize: '0.78rem', color: C.muted }}>See how athletes protect their content</p>
+                </div>
+                <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '1.2rem' }}>→</span>
+              </Link>
+            )}
           </div>
 
           {/* ── Protected Assets ── */}
