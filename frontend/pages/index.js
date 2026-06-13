@@ -329,6 +329,13 @@ export default function Dashboard() {
                     fontFamily: "'Barlow', sans-serif", fontWeight: 600,
                   }}>Scan All</button>
                 )}
+                <Link href={activeProfile?.accountType === 'club' ? '/sports-club-demo' : '/individual-demo'} style={{
+                  fontSize: '0.78rem', color: '#a78bfa',
+                  border: '1px solid rgba(167,139,250,0.3)', borderRadius: 6,
+                  padding: '5px 12px', textDecoration: 'none',
+                  fontFamily: "'Barlow', sans-serif", fontWeight: 600,
+                  transition: 'border-color 0.2s',
+                }}>{activeProfile?.accountType === 'club' ? 'View Demo for Sports Clubs' : 'View Demo for Individuals'}</Link>
               </div>
             </div>
           </div>
@@ -348,34 +355,6 @@ export default function Dashboard() {
                 <div className="db-stat-label">{s.label}</div>
               </div>
             ))}
-          </div>
-
-          {/* ── View Demo ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-            {(activeProfile?.accountType === 'club' || !activeProfile?.accountType) && (
-              <Link href="/sports-club-demo" className="db-card" style={{ padding: '22px 24px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.2s' }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(26,92,26,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/></svg>
-                </div>
-                <div>
-                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 2 }}>Sports Club Demo</p>
-                  <p style={{ fontSize: '0.78rem', color: C.muted }}>See how clubs protect media at scale</p>
-                </div>
-                <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '1.2rem' }}>→</span>
-              </Link>
-            )}
-            {(activeProfile?.accountType === 'individual' || !activeProfile?.accountType) && (
-              <Link href="/individual-demo" className="db-card" style={{ padding: '22px 24px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color 0.2s' }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(26,92,26,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </div>
-                <div>
-                  <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 2 }}>Individual Athlete Demo</p>
-                  <p style={{ fontSize: '0.78rem', color: C.muted }}>See how athletes protect their content</p>
-                </div>
-                <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '1.2rem' }}>→</span>
-              </Link>
-            )}
           </div>
 
           {/* ── Recent Alerts ── */}
