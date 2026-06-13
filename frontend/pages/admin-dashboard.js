@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { formatDistanceToNow, subDays, startOfDay, format } from 'date-fns';
+import {
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [auth, setAuth] = useState(null);
-  const [tab, setTab] = useState('messages');
+  const [tab, setTab] = useState('community');
   const [messages, setMessages] = useState([]);
   const [healthResults, setHealthResults] = useState([]);
   const [userStats, setUserStats] = useState(null);
@@ -19,6 +24,7 @@ export default function AdminDashboard() {
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [assetFilter, setAssetFilter] = useState('all');
+  const [alertFilter, setAlertFilter] = useState('all');
 
   useEffect(() => {
     const stored = sessionStorage.getItem('adminAuth');
@@ -38,12 +44,18 @@ export default function AdminDashboard() {
     if (!auth) return;
     loadMessages();
     loadUserStats();
+    loadAllAssets();
+    loadAllAlerts();
   }, [auth]);
+
+  async function adminFetch(path) {
+    const res = await fetch(`${API_URL}${path}`);
+    return res.json();
+  }
 
   async function loadMessages() {
     try {
-      const res = await fetch(`${API_URL}/api/admin/messages`);
-      const data = await res.json();
+      const data = await adminFetch('/api/admin/messages');
       if (data.ok) setMessages(data.messages);
     } catch {} finally { setLoading(false); }
   }
@@ -56,16 +68,14 @@ export default function AdminDashboard() {
   async function runHealthCheck() {
     setHealthLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/admin/health-check`);
-      const data = await res.json();
+      const data = await adminFetch('/api/admin/health-check');
       if (data.ok) setHealthResults(data.results);
     } catch {} finally { setHealthLoading(false); }
   }
 
   async function loadUserStats() {
     try {
-      const res = await fetch(`${API_URL}/api/admin/user-stats`);
-      const data = await res.json();
+      const data = await adminFetch('/api/admin/user-stats');
       if (data.ok) setUserStats(data.stats);
     } catch {}
   }
@@ -73,8 +83,7 @@ export default function AdminDashboard() {
   async function loadAllAssets() {
     setAssetsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/admin/all-assets`);
-      const data = await res.json();
+      const data = await adminFetch('/api/admin/all-assets');
       if (data.ok) setAllAssets(data.assets);
     } catch {} finally { setAssetsLoading(false); }
   }
@@ -82,8 +91,7 @@ export default function AdminDashboard() {
   async function loadAllAlerts() {
     setAlertsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/admin/all-alerts`);
-      const data = await res.json();
+      const data = await adminFetch('/api/admin/all-alerts');
       if (data.ok) setAllAlerts(data.alerts);
     } catch {} finally { setAlertsLoading(false); }
   }
@@ -99,7 +107,7 @@ export default function AdminDashboard() {
   }
 
   async function removeAsset(id) {
-    if (!confirm('Permanently delete this asset?')) return;
+    if (!confirm('Permanently delete this asset? This cannot be undone.')) return;
     await fetch(`${API_URL}/api/admin/assets/${id}`, { method: 'DELETE' });
     setAllAssets(prev => prev.filter(a => a.id !== id));
   }
@@ -108,505 +116,778 @@ export default function AdminDashboard() {
 
   const unreadCount = messages.filter(m => !m.read).length;
 
+  // Build alert map: assetId → alerts[]
+  const alertsByAsset = {};
+  allAlerts.forEach(a => {
+    if (!alertsByAsset[a.assetId]) alertsByAsset[a.assetId] = [];
+    alertsByAsset[a.assetId].push(a);
+  });
+
+  // Community filters
+  const violatedAssets = allAssets.filter(a => (alertsByAsset[a.id]?.length || 0) > 0).length;
+  const communityScore = allAssets.length > 0
+    ? Math.round(((allAssets.length - violatedAssets) / allAssets.length) * 100)
+    : 100;
   const filteredAssets = allAssets.filter(a => {
+    if (assetFilter === 'violations') return (alertsByAsset[a.id]?.length || 0) > 0;
+    if (assetFilter === 'clean') return (alertsByAsset[a.id]?.length || 0) === 0;
     if (assetFilter === 'flagged') return a.adminFlagged;
-    if (assetFilter === 'public') return a.isPublic !== false && !a.adminFlagged;
-    if (assetFilter === 'private') return a.isPublic === false;
     return true;
   });
 
+  // Alert filters
+  const unreadAlerts = allAlerts.filter(a => !a.isRead).length;
+  const filteredAlerts = allAlerts.filter(a => {
+    if (alertFilter === 'high') return a.severity === 'high';
+    if (alertFilter === 'medium') return a.severity === 'medium';
+    if (alertFilter === 'unread') return !a.isRead;
+    return true;
+  });
+
+  // Analytics data
+  const last30 = Array.from({ length: 30 }, (_, i) => {
+    const d = startOfDay(subDays(new Date(), 29 - i));
+    return { date: format(d, 'MMM d'), violations: 0, _ts: d.getTime() };
+  });
+  allAlerts.forEach(a => {
+    const ts = a.createdAt ? new Date(a.createdAt).getTime() : null;
+    if (!ts) return;
+    const slot = last30.find(d => d._ts === startOfDay(new Date(ts)).getTime());
+    if (slot) slot.violations += 1;
+  });
+  const lineData = last30.map(({ date, violations }) => ({ date, violations }));
+  const showLabels = lineData.filter((_, i) => i % 5 === 0).map(d => d.date);
+
+  const platformMap = {};
+  allAlerts.forEach(a => {
+    try {
+      const host = new URL(a.foundUrl || 'http://unknown').hostname.replace('www.', '');
+      platformMap[host] = (platformMap[host] || 0) + 1;
+    } catch { platformMap['unknown'] = (platformMap['unknown'] || 0) + 1; }
+  });
+  const barData = Object.entries(platformMap)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([platform, count]) => ({ platform, count }));
+
+  const assetViolations = {};
+  allAlerts.forEach(a => { if (a.assetId) assetViolations[a.assetId] = (assetViolations[a.assetId] || 0) + 1; });
+  const topAssets = allAssets
+    .map(a => ({ ...a, violations: assetViolations[a.id] || 0 }))
+    .filter(a => a.violations > 0)
+    .sort((a, b) => b.violations - a.violations).slice(0, 5);
+
+  const totalViolations = allAlerts.length;
+  const dismissed = allAlerts.filter(a => a.isRead).length;
+  const resolutionRate = totalViolations > 0 ? Math.round((dismissed / totalViolations) * 100) : 0;
+  const avgRiskScore = allAssets.length > 0
+    ? Math.round(allAssets.reduce((s, a) => {
+        const n = a.matchCount || 0;
+        if (n === 0) return s;
+        return s + Math.min(100, (n <= 2 ? n * 10 : n <= 4 ? 20 + (n - 2) * 5 : 30) + 20 + (n >= 3 ? 15 : n >= 1 ? 8 : 0));
+      }, 0) / allAssets.length)
+    : 0;
+
+  const tooltipStyle = {
+    backgroundColor: '#0d1f10',
+    border: '1px solid rgba(26,92,26,0.4)',
+    borderRadius: 8,
+    color: '#fff',
+    fontFamily: 'Barlow, sans-serif',
+    fontSize: 12,
+  };
+
   const TABS = [
-    { key: 'messages', label: 'Messages', badge: unreadCount, onClick: () => setTab('messages') },
-    { key: 'community', label: 'Community', onClick: () => { setTab('community'); if (!allAssets.length) loadAllAssets(); } },
-    { key: 'analytics', label: 'Analytics', onClick: () => { setTab('analytics'); if (!userStats) loadUserStats(); } },
-    { key: 'alerts', label: 'All Alerts', onClick: () => { setTab('alerts'); if (!allAlerts.length) loadAllAlerts(); } },
-    { key: 'health', label: 'Health', onClick: () => { setTab('health'); if (!healthResults.length) runHealthCheck(); } },
-    { key: 'stats', label: 'Users', onClick: () => { setTab('stats'); if (!userStats) loadUserStats(); } },
+    { key: 'community', label: 'Community' },
+    { key: 'analytics', label: 'Analytics' },
+    { key: 'alerts', label: 'Alerts' },
+    { key: 'health', label: 'Health Check' },
+    { key: 'stats', label: 'User Stats' },
+    { key: 'messages', label: 'Messages', badge: unreadCount },
   ];
 
   return (
-    <>
-      <Head><title>Admin Dashboard — SportShield</title></Head>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap');
-        .adm-root {
-          min-height: 100vh; background: #0a1210; color: #d4e8d4;
-          font-family: 'Barlow', sans-serif;
-        }
-        .adm-nav {
-          position: sticky; top: 0; z-index: 50;
-          background: rgba(10,18,12,0.96); backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(26,92,26,0.4);
-          padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px;
-        }
-        .adm-nav-logo {
-          display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff;
-          font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.1rem;
-          margin-right: 12px;
-        }
-        .adm-tab {
-          background: none; border: none; color: rgba(255,255,255,0.45);
-          font-family: 'Barlow', sans-serif; font-size: 0.8rem; font-weight: 600;
-          cursor: pointer; padding: 6px 12px; border-radius: 8px; transition: all 0.2s;
-          white-space: nowrap;
-        }
-        .adm-tab:hover { color: #fff; background: rgba(26,92,26,0.2); }
-        .adm-tab.active { color: #4ade80; background: rgba(26,92,26,0.3); }
-        .adm-card {
-          background: rgba(13,26,16,0.85); border: 1px solid rgba(26,92,26,0.35);
-          border-radius: 14px; padding: 24px;
-        }
-        .adm-badge {
-          display: inline-flex; align-items: center; justify-content: center;
-          min-width: 18px; height: 18px; border-radius: 9px;
-          background: #ef4444; color: #fff; font-size: 0.68rem; font-weight: 700;
-          padding: 0 5px; margin-left: 4px;
-        }
-        .adm-msg-row {
-          padding: 16px 0; border-bottom: 1px solid rgba(26,92,26,0.15);
-          display: flex; gap: 16px; align-items: flex-start;
-        }
-        .adm-msg-row:last-child { border-bottom: none; }
-        .adm-stat-card {
-          background: rgba(26,92,26,0.15); border: 1px solid rgba(26,92,26,0.3);
-          border-radius: 12px; padding: 20px; text-align: center;
-        }
-        .adm-stat-num {
-          font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
-          font-size: 2.2rem; color: #4ade80;
-        }
-        .adm-health-row {
-          display: flex; align-items: center; gap: 12px;
-          padding: 12px 0; border-bottom: 1px solid rgba(26,92,26,0.15);
-        }
-        .adm-health-row:last-child { border-bottom: none; }
-        .adm-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .adm-title {
-          font-family: 'Barlow Condensed', sans-serif; font-weight: 800;
-          font-size: 1.5rem; color: #fff; margin-bottom: 20px;
-        }
-        .adm-pill {
-          font-size: 0.75rem; padding: 4px 12px; border-radius: 20px;
-          border: 1px solid rgba(26,92,26,0.35); background: none;
-          color: rgba(255,255,255,0.5); cursor: pointer; font-family: 'Barlow', sans-serif;
-          font-weight: 600; transition: all 0.2s;
-        }
-        .adm-pill.active { background: rgba(26,92,26,0.3); color: #4ade80; border-color: rgba(74,222,128,0.4); }
-        .adm-pill:hover { color: #fff; }
-        .adm-btn-sm {
-          font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; border: 1px solid;
-          background: none; cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600;
-          transition: all 0.2s;
-        }
-        .adm-asset-row {
-          display: flex; align-items: center; gap: 12px; padding: 14px 0;
-          border-bottom: 1px solid rgba(26,92,26,0.12);
-        }
-        .adm-asset-row:last-child { border-bottom: none; }
-        .adm-alert-row {
-          padding: 14px 0; border-bottom: 1px solid rgba(26,92,26,0.12);
-        }
-        .adm-alert-row:last-child { border-bottom: none; }
-      `}</style>
+    <div className="ap-root">
+      <Head><title>Admin — SportShield</title></Head>
 
-      <div className="adm-root">
-        <nav className="adm-nav">
-          <Link href="/landing" className="adm-nav-logo">
-            <img src="/images/sportshield-logo-transparent.png" alt="" style={{ height: 28 }} />
-            SPORTSHIELD
+      {/* Nav — matches ap-nav from rest of site */}
+      <nav className="ap-nav">
+        <div className="ap-nav-left">
+          <Link href="/landing" className="ap-logo">
+            <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
+            <span className="ap-logo-text">SPORTSHIELD</span>
           </Link>
-          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', marginRight: 8 }}>Admin</span>
-          <div style={{ flex: 1 }} />
+          <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Admin</span>
+        </div>
+        <div className="ap-nav-right">
           {TABS.map(t => (
-            <button key={t.key} className={`adm-tab${tab === t.key ? ' active' : ''}`} onClick={t.onClick}>
+            <button
+              key={t.key}
+              onClick={() => {
+                setTab(t.key);
+                if (t.key === 'health' && !healthResults.length) runHealthCheck();
+              }}
+              className={`ap-filter${tab === t.key ? ' active' : ''}`}
+              style={{ padding: '5px 12px', fontSize: '0.75rem' }}
+            >
               {t.label}
-              {t.badge > 0 && <span className="adm-badge">{t.badge}</span>}
+              {t.badge > 0 && (
+                <span className="ap-badge ap-badge-new" style={{ marginLeft: 4 }}>{t.badge}</span>
+              )}
             </button>
           ))}
           <button
             onClick={() => { sessionStorage.removeItem('adminAuth'); router.push('/login'); }}
-            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 8, padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'Barlow', sans-serif", marginLeft: 8 }}>
+            className="ap-btn ap-btn-ghost"
+            style={{ padding: '5px 12px', fontSize: '0.75rem', color: '#f87171', borderColor: 'rgba(239,68,68,0.25)' }}
+          >
             Logout
           </button>
-        </nav>
+        </div>
+      </nav>
 
-        <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
+      <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
 
-          {/* ═══ Messages ═══ */}
-          {tab === 'messages' && (
-            <div>
-              <h2 className="adm-title">
-                Contact Messages
-                {unreadCount > 0 && <span style={{ color: '#4ade80', fontSize: '0.9rem', fontWeight: 600, marginLeft: 10 }}>{unreadCount} unread</span>}
-              </h2>
-              {loading ? (
-                <p style={{ color: 'rgba(255,255,255,0.4)' }}>Loading messages...</p>
-              ) : messages.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>No messages yet.</p>
+        {/* ═══════════════════ COMMUNITY ═══════════════════ */}
+        {tab === 'community' && (
+          <>
+            <div style={{ marginBottom: 32 }}>
+              <h1 className="ap-heading">Community Dashboard</h1>
+              <p className="ap-muted" style={{ marginTop: 6 }}>
+                All assets across the platform. Flag or remove content that violates community guidelines.
+              </p>
+            </div>
+
+            {/* Stats row — same layout as public dashboard */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 28 }}>
+              {[
+                { label: 'Community Score', value: `${communityScore}%`, accent: communityScore >= 70 ? 'rgba(74,222,128,0.2)' : 'rgba(245,158,11,0.2)' },
+                { label: 'Total Assets', value: allAssets.length, accent: 'rgba(26,92,26,0.3)' },
+                { label: 'Total Violations', value: totalViolations, accent: 'rgba(239,68,68,0.2)' },
+                { label: 'Assets with Issues', value: violatedAssets, accent: 'rgba(245,158,11,0.2)' },
+                { label: 'Clean Assets', value: allAssets.length - violatedAssets, accent: 'rgba(74,222,128,0.15)' },
+              ].map(s => (
+                <div key={s.label} className="ap-card" style={{ padding: '18px 20px', borderColor: s.accent }}>
+                  <div className="ap-stat-num">{s.value}</div>
+                  <div className="ap-stat-label">{s.label}</div>
                 </div>
-              ) : (
-                <div className="adm-card">
-                  {messages.map(m => (
-                    <div key={m.id} className="adm-msg-row" style={{ opacity: m.read ? 0.6 : 1 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: m.read ? 'rgba(255,255,255,0.15)' : '#4ade80', marginTop: 6, flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>{m.name}</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)' }}>{m.email}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>
-                            {m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '0.78rem', color: '#4ade80', fontWeight: 600, marginBottom: 4 }}>{m.subject}</p>
-                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{m.message}</p>
-                        {!m.read && (
-                          <button onClick={() => markRead(m.id)}
-                            style={{ marginTop: 8, background: 'rgba(26,92,26,0.2)', border: '1px solid rgba(26,92,26,0.4)', color: '#4ade80', borderRadius: 6, padding: '4px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
-                            Mark as read
-                          </button>
+              ))}
+            </div>
+
+            {/* Filter pills */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap', alignItems: 'center' }}>
+              {[
+                { key: 'all', label: `All Assets (${allAssets.length})` },
+                { key: 'violations', label: `Has Violations (${violatedAssets})` },
+                { key: 'clean', label: `Clean (${allAssets.length - violatedAssets})` },
+                { key: 'flagged', label: `Flagged (${allAssets.filter(a => a.adminFlagged).length})` },
+              ].map(f => (
+                <button key={f.key} onClick={() => setAssetFilter(f.key)}
+                  className={`ap-filter${assetFilter === f.key ? ' active' : ''}`}>
+                  {f.label}
+                </button>
+              ))}
+              <button onClick={loadAllAssets} disabled={assetsLoading}
+                className="ap-btn ap-btn-ghost" style={{ marginLeft: 'auto', padding: '5px 14px', fontSize: '0.78rem' }}>
+                {assetsLoading ? 'Refreshing…' : 'Refresh'}
+              </button>
+            </div>
+
+            {/* Asset grid — same card layout as public dashboard */}
+            {assetsLoading && allAssets.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <p className="ap-muted">Loading community assets…</p>
+              </div>
+            ) : filteredAssets.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <p className="ap-muted">No assets match this filter.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
+                {filteredAssets.map(asset => {
+                  const assetAlerts = alertsByAsset[asset.id] || [];
+                  const violations = assetAlerts.length;
+                  const maxConf = violations > 0
+                    ? Math.round(Math.max(...assetAlerts.map(a => a.confidence || 0)) * 100)
+                    : 0;
+                  const uploadedAt = asset.uploadedAt ? new Date(asset.uploadedAt) : new Date();
+
+                  return (
+                    <div key={asset.id} className="ap-card"
+                      style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                      {/* Thumbnail */}
+                      <div style={{ height: 150, background: 'rgba(26,92,26,0.15)', position: 'relative', overflow: 'hidden' }}>
+                        {asset.originalUrl ? (
+                          <img src={asset.originalUrl} alt={asset.filename}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.85rem' }}>
+                            {asset.type === 'video' ? 'Video' : 'Image'}
+                          </div>
+                        )}
+                        {violations > 0 && (
+                          <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.72rem' }}>
+                            {violations} violation{violations !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                        {violations === 0 && !asset.adminFlagged && (
+                          <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(74,222,128,0.85)', color: '#081008', borderRadius: 20, padding: '3px 10px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.72rem' }}>
+                            Clean
+                          </div>
+                        )}
+                        {asset.adminFlagged && (
+                          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.72rem' }}>
+                            Flagged
+                          </div>
                         )}
                       </div>
+
+                      {/* Info */}
+                      <div style={{ padding: '14px 16px', flex: 1 }}>
+                        <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {asset.filename || 'Unnamed Asset'}
+                        </p>
+                        <p className="ap-muted" style={{ fontSize: '0.72rem', marginBottom: 10 }}>
+                          {asset.type || 'image'} · {formatDistanceToNow(uploadedAt, { addSuffix: true })} · User {(asset.userId || '').slice(0, 8)}…
+                        </p>
+
+                        {violations > 0 ? (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>Highest confidence</span>
+                              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '0.85rem', color: '#f87171' }}>{maxConf}%</span>
+                            </div>
+                            <div className="ap-conf-bar-track">
+                              <div className="ap-conf-bar-fill" style={{ width: `${maxConf}%`, background: maxConf >= 90 ? '#ef4444' : '#f59e0b' }} />
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.8rem', color: '#4ade80' }}>
+                            No violations detected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Admin actions — footer */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderTop: '1px solid rgba(26,92,26,0.18)' }}>
+                        <span className={`ap-badge ${asset.status === 'complete' ? 'ap-badge-complete' : asset.status === 'scanning' ? 'ap-badge-scanning' : 'ap-badge-pending'}`}>
+                          {asset.status || 'pending'}
+                        </span>
+                        <span className="ap-muted" style={{ fontSize: '0.7rem' }}>
+                          {asset.scanCount || 0} scans
+                        </span>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+                          {!asset.adminFlagged ? (
+                            <button onClick={() => flagAsset(asset.id)}
+                              className="ap-btn ap-btn-ghost"
+                              style={{ padding: '3px 8px', fontSize: '0.68rem', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.25)' }}>
+                              Flag
+                            </button>
+                          ) : (
+                            <button onClick={() => unflagAsset(asset.id)}
+                              className="ap-btn ap-btn-ghost"
+                              style={{ padding: '3px 8px', fontSize: '0.68rem', color: '#4ade80', borderColor: 'rgba(74,222,128,0.25)' }}>
+                              Unflag
+                            </button>
+                          )}
+                          <button onClick={() => removeAsset(asset.id)}
+                            className="ap-btn ap-btn-ghost"
+                            style={{ padding: '3px 8px', fontSize: '0.68rem', color: '#f87171', borderColor: 'rgba(239,68,68,0.25)' }}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════ ANALYTICS ═══════════════════ */}
+        {tab === 'analytics' && (
+          <>
+            <div style={{ marginBottom: 32 }}>
+              <h1 className="ap-heading">Platform Analytics</h1>
+              <p className="ap-muted" style={{ marginTop: 6 }}>Violation trends, platform breakdown and asset risk overview — all users combined.</p>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 28 }}>
+              {[
+                { label: 'Total Violations', value: totalViolations, accent: 'rgba(239,68,68,0.18)' },
+                { label: 'Assets Monitored', value: allAssets.length, accent: 'rgba(26,92,26,0.28)' },
+                { label: 'Avg Risk Score', value: avgRiskScore, accent: avgRiskScore >= 50 ? 'rgba(245,158,11,0.2)' : 'rgba(74,222,128,0.15)' },
+                { label: 'Dismissed', value: dismissed, accent: 'rgba(255,255,255,0.06)' },
+                { label: 'Resolution Rate', value: `${resolutionRate}%`, accent: 'rgba(74,222,128,0.15)' },
+              ].map(s => (
+                <div key={s.label} className="ap-card" style={{ padding: '20px 22px', borderColor: s.accent }}>
+                  <div className="ap-stat-num">{s.value}</div>
+                  <div className="ap-stat-label">{s.label}</div>
                 </div>
+              ))}
+            </div>
+
+            {/* Violations over time */}
+            <div className="ap-chart-card" style={{ marginBottom: 20 }}>
+              <div className="ap-chart-title">Violations — Last 30 Days</div>
+              {totalViolations === 0 ? (
+                <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p className="ap-muted">No violations yet — all assets are clean.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={lineData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,92,26,0.2)" />
+                    <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }} tickLine={false} axisLine={false}
+                      interval="preserveStartEnd" tickFormatter={v => showLabels.includes(v) ? v : ''} />
+                    <YAxis tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'rgba(255,255,255,0.5)' }} />
+                    <Line type="monotone" dataKey="violations" stroke="#4ade80" strokeWidth={2.5}
+                      dot={false} activeDot={{ r: 5, fill: '#4ade80', strokeWidth: 0 }} />
+                  </LineChart>
+                </ResponsiveContainer>
               )}
             </div>
-          )}
 
-          {/* ═══ Community Dashboard (Admin) ═══ */}
-          {tab === 'community' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-                <h2 className="adm-title" style={{ marginBottom: 0 }}>Community Assets</h2>
-                <button onClick={loadAllAssets} disabled={assetsLoading} className="adm-btn-sm"
-                  style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}>
-                  {assetsLoading ? 'Loading...' : 'Refresh'}
-                </button>
-                <div style={{ flex: 1 }} />
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[
-                    { key: 'all', label: `All (${allAssets.length})` },
-                    { key: 'public', label: `Public (${allAssets.filter(a => a.isPublic !== false && !a.adminFlagged).length})` },
-                    { key: 'flagged', label: `Flagged (${allAssets.filter(a => a.adminFlagged).length})` },
-                    { key: 'private', label: `Private (${allAssets.filter(a => a.isPublic === false).length})` },
-                  ].map(f => (
-                    <button key={f.key} className={`adm-pill${assetFilter === f.key ? ' active' : ''}`} onClick={() => setAssetFilter(f.key)}>
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Platform breakdown */}
+              <div className="ap-chart-card">
+                <div className="ap-chart-title">Platform Breakdown</div>
+                {barData.length === 0 ? (
+                  <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p className="ap-muted">No data yet</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,92,26,0.2)" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis dataKey="platform" type="category" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Bar dataKey="count" fill="#1a5c1a" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
-              {assetsLoading && allAssets.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>Loading community assets...</p>
-                </div>
-              ) : filteredAssets.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>No assets in this category.</p>
-                </div>
-              ) : (
-                <div className="adm-card">
-                  {filteredAssets.map(asset => (
-                    <div key={asset.id} className="adm-asset-row">
-                      {asset.originalUrl ? (
-                        <img src={asset.originalUrl} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: 'rgba(26,92,26,0.2)' }} />
-                      ) : (
-                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(26,92,26,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem' }}>
-                          {asset.type || 'img'}
-                        </div>
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
-                          {asset.filename || 'Unnamed'}
-                        </p>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
-                          <span>User: {(asset.userId || '').slice(0, 8)}...</span>
-                          <span>·</span>
-                          <span>{asset.matchCount || 0} matches</span>
-                          <span>·</span>
-                          <span>{asset.status || 'pending'}</span>
-                          {asset.adminFlagged && <span style={{ color: '#f87171', fontWeight: 700 }}>FLAGGED</span>}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 12, background: asset.isPublic !== false ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)', color: asset.isPublic !== false ? '#4ade80' : 'rgba(255,255,255,0.3)', border: '1px solid', borderColor: asset.isPublic !== false ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.08)', fontWeight: 600 }}>
-                          {asset.isPublic !== false ? 'Public' : 'Private'}
-                        </span>
-                        {!asset.adminFlagged ? (
-                          <button onClick={() => flagAsset(asset.id)} className="adm-btn-sm"
-                            style={{ borderColor: 'rgba(251,191,36,0.3)', color: '#fbbf24' }}>
-                            Flag
-                          </button>
+              {/* Most violated assets */}
+              <div className="ap-chart-card">
+                <div className="ap-chart-title">Most Violated Assets</div>
+                {topAssets.length === 0 ? (
+                  <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p className="ap-muted">No violations recorded</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {topAssets.map((a, i) => (
+                      <div key={a.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(26,92,26,0.12)' }}>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.8rem', color: 'rgba(255,255,255,0.35)', width: 20 }}>#{i + 1}</span>
+                        {a.originalUrl ? (
+                          <img src={a.originalUrl} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                         ) : (
-                          <button onClick={() => unflagAsset(asset.id)} className="adm-btn-sm"
-                            style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}>
-                            Unflag
-                          </button>
+                          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'rgba(26,92,26,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                            {a.type === 'video' ? 'Vid' : 'Img'}
+                          </div>
                         )}
-                        <button onClick={() => removeAsset(asset.id)} className="adm-btn-sm"
-                          style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#f87171' }}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══ Analytics ═══ */}
-          {tab === 'analytics' && (
-            <div>
-              <h2 className="adm-title">Platform Analytics</h2>
-              {!userStats ? (
-                <p style={{ color: 'rgba(255,255,255,0.4)' }}>Loading analytics...</p>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
-                    {[
-                      { label: 'Total Scans Run', value: userStats.totalScansRun, color: '#4ade80' },
-                      { label: 'Matches Found', value: userStats.totalMatchesFound, color: '#f87171' },
-                      { label: 'Scanning Now', value: userStats.scanningNow, color: '#34d399' },
-                      { label: 'Errored Scans', value: userStats.erroredScans, color: '#ef4444' },
-                    ].map(s => (
-                      <div key={s.label} className="adm-stat-card">
-                        <div className="adm-stat-num" style={{ color: s.color }}>{s.value}</div>
-                        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: 4 }}>{s.label}</p>
+                        <p style={{ flex: 1, fontSize: '0.82rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.filename || 'Unnamed'}
+                        </p>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: '#f87171', flexShrink: 0 }}>
+                          {a.violations} match{a.violations !== 1 ? 'es' : ''}
+                        </span>
                       </div>
                     ))}
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                    <div className="adm-card">
-                      <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 16 }}>Asset Breakdown</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {[
-                          { label: 'Total Assets', value: userStats.totalAssets, color: '#4ade80' },
-                          { label: 'Public', value: userStats.publicAssets, color: '#34d399' },
-                          { label: 'Private', value: userStats.privateAssets, color: 'rgba(255,255,255,0.5)' },
-                          { label: 'Completed', value: userStats.completedScans, color: '#4ade80' },
-                          { label: 'Errored', value: userStats.erroredScans, color: '#ef4444' },
-                        ].map(r => (
-                          <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', minWidth: 100 }}>{r.label}</span>
-                            <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
-                              <div style={{ width: `${userStats.totalAssets ? (r.value / userStats.totalAssets) * 100 : 0}%`, height: '100%', borderRadius: 4, background: r.color, minWidth: r.value > 0 ? 4 : 0 }} />
-                            </div>
-                            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.85rem', color: r.color, minWidth: 28, textAlign: 'right' }}>{r.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="adm-card">
-                      <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 16 }}>Alert Breakdown</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {[
-                          { label: 'Total Alerts', value: userStats.totalAlerts, color: '#fbbf24' },
-                          { label: 'Unread', value: userStats.unreadAlerts, color: '#f87171' },
-                          { label: 'High Severity', value: userStats.highSeverityAlerts, color: '#ef4444' },
-                          { label: 'Resolved', value: userStats.totalAlerts - userStats.unreadAlerts, color: '#4ade80' },
-                        ].map(r => (
-                          <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', minWidth: 100 }}>{r.label}</span>
-                            <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
-                              <div style={{ width: `${userStats.totalAlerts ? (r.value / userStats.totalAlerts) * 100 : 0}%`, height: '100%', borderRadius: 4, background: r.color, minWidth: r.value > 0 ? 4 : 0 }} />
-                            </div>
-                            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.85rem', color: r.color, minWidth: 28, textAlign: 'right' }}>{r.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="adm-card">
-                    <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 16 }}>This Week</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-                      {[
-                        { label: 'New Users', value: userStats.newUsersThisWeek, color: '#60a5fa' },
-                        { label: 'New Assets', value: userStats.newAssetsThisWeek, color: '#4ade80' },
-                        { label: 'Total Users', value: userStats.totalUsers, color: '#a78bfa' },
-                        { label: 'Total Assets', value: userStats.totalAssets, color: '#34d399' },
-                      ].map(s => (
-                        <div key={s.label} style={{ textAlign: 'center', padding: '16px 12px', background: 'rgba(26,92,26,0.1)', borderRadius: 10, border: '1px solid rgba(26,92,26,0.2)' }}>
-                          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.8rem', color: s.color }}>{s.value}</div>
-                          <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{s.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ═══ All Alerts ═══ */}
-          {tab === 'alerts' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                <h2 className="adm-title" style={{ marginBottom: 0 }}>All User Alerts</h2>
-                <button onClick={loadAllAlerts} disabled={alertsLoading} className="adm-btn-sm"
-                  style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}>
-                  {alertsLoading ? 'Loading...' : 'Refresh'}
-                </button>
-                <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto' }}>
-                  {allAlerts.length} total
-                </span>
+                )}
               </div>
+            </div>
 
-              {alertsLoading && allAlerts.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>Loading alerts...</p>
+            {/* Platform analytics — same as public dashboard bottom */}
+            {allAlerts.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+                <div className="ap-chart-card">
+                  <div className="ap-chart-title" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)' }}>
+                    Violations by Platform
+                  </div>
+                  {(() => {
+                    const sorted = Object.entries(platformMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+                    const max = sorted[0]?.[1] || 1;
+                    return sorted.map(([platform, count]) => (
+                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', minWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{platform}</span>
+                        <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
+                          <div style={{ width: `${(count / max) * 100}%`, height: '100%', borderRadius: 4, background: '#1a5c1a' }} />
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.78rem', color: '#4ade80', minWidth: 24 }}>{count}</span>
+                      </div>
+                    ));
+                  })()}
                 </div>
-              ) : allAlerts.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>No alerts yet.</p>
+                <div className="ap-chart-card">
+                  <div className="ap-chart-title" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)' }}>
+                    Protection Overview
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.06)', borderRadius: 10, border: '1px solid rgba(74,222,128,0.15)' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#4ade80' }}>{allAssets.length - violatedAssets}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Clean Assets</div>
+                    </div>
+                    <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#f87171' }}>{violatedAssets}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>With Violations</div>
+                    </div>
+                    <div style={{ padding: '14px 16px', background: 'rgba(26,92,26,0.1)', borderRadius: 10, border: '1px solid rgba(26,92,26,0.25)', gridColumn: 'span 2' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: communityScore >= 70 ? '#4ade80' : '#fbbf24' }}>{communityScore}%</div>
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Community Protection Score</div>
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
+                        Percentage of monitored assets with no violations detected
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="adm-card">
-                  {allAlerts.slice(0, 50).map(alert => {
-                    const pct = Math.round((alert.confidence || 0) * 100);
-                    return (
-                      <div key={alert.id} className="adm-alert-row">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: alert.isRead ? 'rgba(255,255,255,0.15)' : '#f87171', flexShrink: 0 }} />
-                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.9rem', color: pct >= 80 ? '#ef4444' : pct >= 50 ? '#fbbf24' : '#4ade80' }}>
-                            {pct}% confidence
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════ ALERTS ═══════════════════ */}
+        {tab === 'alerts' && (
+          <>
+            <div style={{ marginBottom: 28 }}>
+              <h1 className="ap-heading">All User Alerts</h1>
+              <p className="ap-muted" style={{ marginTop: 6 }}>
+                {allAlerts.length} total · {unreadAlerts} unread — across all users on the platform
+              </p>
+            </div>
+
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+              {[
+                { key: 'all', label: `All (${allAlerts.length})` },
+                { key: 'unread', label: `Unread (${unreadAlerts})` },
+                { key: 'high', label: 'High Severity' },
+                { key: 'medium', label: 'Medium' },
+              ].map(f => (
+                <button key={f.key} onClick={() => setAlertFilter(f.key)}
+                  className={`ap-filter${alertFilter === f.key ? ' active' : ''}`}>
+                  {f.label}
+                </button>
+              ))}
+              <button onClick={loadAllAlerts} disabled={alertsLoading}
+                className="ap-btn ap-btn-ghost" style={{ marginLeft: 'auto', padding: '5px 14px', fontSize: '0.78rem' }}>
+                {alertsLoading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+
+            {/* Alert list — same card layout as /alerts page */}
+            {alertsLoading && allAlerts.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <p className="ap-muted">Loading alerts…</p>
+              </div>
+            ) : filteredAlerts.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+                  <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </div>
+                <p className="ap-subheading" style={{ marginBottom: 8 }}>No alerts</p>
+                <p className="ap-muted">{alertFilter === 'all' ? 'No violations detected yet.' : 'No alerts match this filter.'}</p>
+              </div>
+            ) : (
+              <div>
+                {filteredAlerts.slice(0, 50).map(alert => {
+                  const createdAt = alert.createdAt ? new Date(alert.createdAt) : new Date();
+                  const confidence = Math.round((alert.confidence || 0) * 100);
+                  const isHigh = alert.severity === 'high';
+                  const barColor = confidence >= 90 ? '#ef4444' : confidence >= 75 ? '#f59e0b' : '#4ade80';
+                  const rs = alert.riskScore != null ? alert.riskScore
+                    : Math.min(100, Math.round((alert.confidence || 0.5) * 60 + (isHigh ? 30 : 15)));
+
+                  return (
+                    <div key={alert.id}
+                      className={`ap-alert-card${isHigh ? '' : ' medium'}`}
+                      style={{ marginBottom: 10 }}>
+                      {/* Header */}
+                      <div className="ap-alert-card-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className={`ap-badge ${isHigh ? 'ap-badge-high' : 'ap-badge-medium'}`} style={{ textTransform: 'uppercase' }}>
+                            {alert.severity || 'medium'}
                           </span>
-                          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
-                            User: {(alert.userId || '').slice(0, 8)}...
+                          <span style={{
+                            fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.7rem',
+                            padding: '2px 8px', borderRadius: 10,
+                            color: rs >= 75 ? '#ef4444' : rs >= 50 ? '#f59e0b' : '#4ade80',
+                            background: rs >= 75 ? 'rgba(239,68,68,0.12)' : rs >= 50 ? 'rgba(245,158,11,0.12)' : 'rgba(74,222,128,0.1)',
+                            border: `1px solid ${rs >= 75 ? 'rgba(239,68,68,0.25)' : rs >= 50 ? 'rgba(245,158,11,0.25)' : 'rgba(74,222,128,0.2)'}`,
+                          }}>
+                            Risk {rs}
                           </span>
-                          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>
-                            {alert.createdAt ? new Date(alert.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                          {!alert.isRead && (
+                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.7rem', color: '#fca5a5', letterSpacing: '0.08em' }}>
+                              ● NEW
+                            </span>
+                          )}
+                          <span className="ap-muted" style={{ fontSize: '0.68rem' }}>
+                            User: {(alert.userId || '').slice(0, 8)}…
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)' }}>
+                          {formatDistanceToNow(createdAt, { addSuffix: true })}
+                        </span>
+                      </div>
+
+                      {/* Body */}
+                      <div className="ap-alert-card-body">
+                        <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.02rem', color: '#fff', marginBottom: 10, letterSpacing: '0.01em' }}>
+                          Unauthorized use detected — {confidence}% confidence
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                          <div className="ap-conf-bar-track">
+                            <div className="ap-conf-bar-fill" style={{ width: `${confidence}%`, background: barColor }} />
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '0.9rem', color: barColor, minWidth: 36 }}>
+                            {confidence}%
                           </span>
                         </div>
                         {alert.foundUrl && (
-                          <p style={{ fontSize: '0.78rem', color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: 20 }}>
-                            {alert.foundUrl}
-                          </p>
+                          <a href={alert.foundUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'block', fontSize: '0.78rem', color: '#60a5fa', textDecoration: 'none', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            ↗ {alert.foundUrl}
+                          </a>
                         )}
-                        <div style={{ display: 'flex', gap: 8, marginLeft: 20, marginTop: 4 }}>
-                          {alert.severity && (
-                            <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 10, background: alert.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)', color: alert.severity === 'high' ? '#f87171' : '#fbbf24', fontWeight: 600 }}>
-                              {alert.severity}
-                            </span>
-                          )}
-                          {alert.takedownStatus && alert.takedownStatus !== 'none' && (
-                            <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 10, background: 'rgba(96,165,250,0.12)', color: '#60a5fa', fontWeight: 600 }}>
-                              Takedown: {alert.takedownStatus}
-                            </span>
-                          )}
-                        </div>
+                        {alert.takedownStatus && alert.takedownStatus !== 'none' && (
+                          <span className="ap-badge" style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }}>
+                            Takedown: {alert.takedownStatus}
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
-                  {allAlerts.length > 50 && (
-                    <p style={{ textAlign: 'center', fontSize: '0.82rem', color: 'rgba(255,255,255,0.3)', padding: '14px 0' }}>
-                      Showing 50 of {allAlerts.length} alerts
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══ Health Check ═══ */}
-          {tab === 'health' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                <h2 className="adm-title" style={{ marginBottom: 0 }}>Endpoint Health Check</h2>
-                <button onClick={runHealthCheck} disabled={healthLoading} className="adm-btn-sm"
-                  style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}>
-                  {healthLoading ? 'Scanning...' : 'Scan Now'}
-                </button>
-              </div>
-
-              {healthResults.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-                  <div className="adm-stat-card">
-                    <div className="adm-stat-num" style={{ color: '#4ade80' }}>{healthResults.filter(r => r.ok).length}</div>
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: 4 }}>Healthy</p>
-                  </div>
-                  <div className="adm-stat-card">
-                    <div className="adm-stat-num" style={{ color: '#ef4444' }}>{healthResults.filter(r => !r.ok).length}</div>
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: 4 }}>Failed</p>
-                  </div>
-                  <div className="adm-stat-card">
-                    <div className="adm-stat-num" style={{ color: '#60a5fa' }}>
-                      {healthResults.length > 0 ? Math.round(healthResults.reduce((s, r) => s + (r.latency_ms || 0), 0) / healthResults.length) : 0}ms
                     </div>
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: 4 }}>Avg Latency</p>
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+                {filteredAlerts.length > 50 && (
+                  <p className="ap-muted" style={{ textAlign: 'center', padding: '14px 0' }}>
+                    Showing 50 of {filteredAlerts.length} alerts
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
-              {healthResults.length === 0 ? (
-                <div className="adm-card" style={{ textAlign: 'center', padding: 48 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.4)' }}>Click "Scan Now" to check all endpoints.</p>
+        {/* ═══════════════════ HEALTH CHECK ═══════════════════ */}
+        {tab === 'health' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
+              <div>
+                <h1 className="ap-heading">Endpoint Health</h1>
+                <p className="ap-muted" style={{ marginTop: 6 }}>
+                  Checks all backend endpoints and reports status and latency.
+                </p>
+              </div>
+              <button onClick={runHealthCheck} disabled={healthLoading}
+                className="ap-btn ap-btn-green" style={{ marginLeft: 'auto', padding: '10px 20px' }}>
+                {healthLoading ? 'Scanning…' : 'Scan Now'}
+              </button>
+            </div>
+
+            {healthResults.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
+                {[
+                  { label: 'Healthy', value: healthResults.filter(r => r.ok).length, color: '#4ade80' },
+                  { label: 'Failed', value: healthResults.filter(r => !r.ok).length, color: '#ef4444' },
+                  { label: 'Avg Latency', value: `${Math.round(healthResults.reduce((s, r) => s + (r.latency_ms || 0), 0) / healthResults.length)}ms`, color: '#60a5fa' },
+                ].map(s => (
+                  <div key={s.label} className="ap-card" style={{ padding: '20px 22px', textAlign: 'center' }}>
+                    <div className="ap-stat-num" style={{ color: s.color }}>{s.value}</div>
+                    <div className="ap-stat-label">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {healthResults.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+                  <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                 </div>
-              ) : (
-                <div className="adm-card">
-                  {healthResults.map(r => (
-                    <div key={r.endpoint} className="adm-health-row">
-                      <div className="adm-dot" style={{ background: r.ok ? '#4ade80' : '#ef4444' }} />
-                      <span style={{ fontFamily: "'Courier New', monospace", fontSize: '0.82rem', color: '#fff', flex: 1 }}>{r.endpoint}</span>
-                      <span style={{ fontSize: '0.78rem', color: r.ok ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                        {r.ok ? `${r.status} OK` : `${r.status || 'ERR'} FAIL`}
+                <p className="ap-subheading" style={{ marginBottom: 8 }}>No results yet</p>
+                <p className="ap-muted">Click "Scan Now" to check all backend endpoints.</p>
+              </div>
+            ) : (
+              <div className="ap-card" style={{ padding: '6px 0' }}>
+                {healthResults.map((r, i) => (
+                  <div key={r.endpoint}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px',
+                      borderBottom: i < healthResults.length - 1 ? '1px solid rgba(26,92,26,0.15)' : 'none',
+                    }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: r.ok ? '#4ade80' : '#ef4444', flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#fff', flex: 1 }}>{r.endpoint}</span>
+                    <span style={{
+                      fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.78rem',
+                      color: r.ok ? '#4ade80' : '#f87171',
+                    }}>
+                      {r.ok ? `${r.status} OK` : `${r.status || 'ERR'} FAIL`}
+                    </span>
+                    {r.latency_ms != null && (
+                      <span style={{
+                        fontSize: '0.75rem', minWidth: 55, textAlign: 'right',
+                        color: r.latency_ms > 2000 ? '#f87171' : r.latency_ms > 500 ? '#fbbf24' : 'rgba(255,255,255,0.35)',
+                        fontWeight: r.latency_ms > 2000 ? 700 : 400,
+                      }}>
+                        {r.latency_ms}ms
                       </span>
-                      {r.latency_ms != null && (
-                        <span style={{ fontSize: '0.72rem', color: r.latency_ms > 2000 ? '#f87171' : r.latency_ms > 500 ? '#fbbf24' : 'rgba(255,255,255,0.3)', minWidth: 60, textAlign: 'right', fontWeight: r.latency_ms > 2000 ? 700 : 400 }}>
-                          {r.latency_ms}ms
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══ User Stats ═══ */}
-          {tab === 'stats' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                <h2 className="adm-title" style={{ marginBottom: 0 }}>User Statistics</h2>
-                <button onClick={loadUserStats} className="adm-btn-sm"
-                  style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}>
-                  Refresh
-                </button>
+                    )}
+                  </div>
+                ))}
               </div>
-              {!userStats ? (
-                <p style={{ color: 'rgba(255,255,255,0.4)' }}>Loading stats...</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════ USER STATS ═══════════════════ */}
+        {tab === 'stats' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+              <div>
+                <h1 className="ap-heading">User Statistics</h1>
+                <p className="ap-muted" style={{ marginTop: 6 }}>
+                  Aggregated data across all registered users and their assets.
+                </p>
+              </div>
+              <button onClick={loadUserStats}
+                className="ap-btn ap-btn-ghost" style={{ marginLeft: 'auto', padding: '7px 16px', fontSize: '0.78rem' }}>
+                Refresh
+              </button>
+            </div>
+
+            {!userStats ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <p className="ap-muted">Loading stats…</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
                   {[
                     { label: 'Total Users', value: userStats.totalUsers, color: '#4ade80' },
                     { label: 'New This Week', value: userStats.newUsersThisWeek, color: '#60a5fa' },
                     { label: 'Protected Assets', value: userStats.totalAssets, color: '#34d399' },
                     { label: 'New Assets (Week)', value: userStats.newAssetsThisWeek, color: '#a78bfa' },
-                    { label: 'Total Alerts', value: userStats.totalAlerts, color: '#fbbf24' },
-                    { label: 'Unread Alerts', value: userStats.unreadAlerts, color: '#f87171' },
-                    { label: 'High Severity', value: userStats.highSeverityAlerts, color: '#ef4444' },
-                    { label: 'Total Scans', value: userStats.totalScansRun, color: '#4ade80' },
-                    { label: 'Matches Found', value: userStats.totalMatchesFound, color: '#f87171' },
-                    { label: 'Public Assets', value: userStats.publicAssets, color: '#34d399' },
-                    { label: 'Private Assets', value: userStats.privateAssets, color: 'rgba(255,255,255,0.5)' },
-                    { label: 'Scan Errors', value: userStats.erroredScans, color: '#ef4444' },
                   ].map(s => (
-                    <div key={s.label} className="adm-stat-card">
-                      <div className="adm-stat-num" style={{ color: s.color, fontSize: '2rem' }}>{s.value}</div>
-                      <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: 4 }}>{s.label}</p>
+                    <div key={s.label} className="ap-card" style={{ padding: '20px 22px' }}>
+                      <div className="ap-stat-num" style={{ color: s.color }}>{s.value}</div>
+                      <div className="ap-stat-label">{s.label}</div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
 
-        </main>
-      </div>
-    </>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  {/* Scan overview */}
+                  <div className="ap-chart-card">
+                    <div className="ap-chart-title">Scan Overview</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[
+                        { label: 'Total Scans', value: userStats.totalScansRun, max: userStats.totalScansRun, color: '#4ade80' },
+                        { label: 'Completed', value: userStats.completedScans, max: userStats.totalAssets, color: '#34d399' },
+                        { label: 'Scanning Now', value: userStats.scanningNow, max: userStats.totalAssets, color: '#60a5fa' },
+                        { label: 'Errored', value: userStats.erroredScans, max: userStats.totalAssets, color: '#ef4444' },
+                        { label: 'Matches Found', value: userStats.totalMatchesFound, max: userStats.totalScansRun || 1, color: '#f87171' },
+                      ].map(r => (
+                        <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', minWidth: 105 }}>{r.label}</span>
+                          <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
+                            <div style={{ width: `${r.max ? Math.min(100, (r.value / r.max) * 100) : 0}%`, height: '100%', borderRadius: 4, background: r.color, minWidth: r.value > 0 ? 4 : 0 }} />
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: r.color, minWidth: 32, textAlign: 'right' }}>{r.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Alerts overview */}
+                  <div className="ap-chart-card">
+                    <div className="ap-chart-title">Alert Overview</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[
+                        { label: 'Total Alerts', value: userStats.totalAlerts, max: userStats.totalAlerts, color: '#fbbf24' },
+                        { label: 'Unread', value: userStats.unreadAlerts, max: userStats.totalAlerts, color: '#f87171' },
+                        { label: 'High Severity', value: userStats.highSeverityAlerts, max: userStats.totalAlerts, color: '#ef4444' },
+                        { label: 'Resolved', value: userStats.totalAlerts - userStats.unreadAlerts, max: userStats.totalAlerts, color: '#4ade80' },
+                        { label: 'Public Assets', value: userStats.publicAssets, max: userStats.totalAssets, color: '#34d399' },
+                        { label: 'Private Assets', value: userStats.privateAssets, max: userStats.totalAssets, color: 'rgba(255,255,255,0.5)' },
+                      ].map(r => (
+                        <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', minWidth: 105 }}>{r.label}</span>
+                          <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(26,92,26,0.2)', overflow: 'hidden' }}>
+                            <div style={{ width: `${r.max ? Math.min(100, (r.value / r.max) * 100) : 0}%`, height: '100%', borderRadius: 4, background: r.color, minWidth: r.value > 0 ? 4 : 0 }} />
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: r.color, minWidth: 32, textAlign: 'right' }}>{r.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════ MESSAGES ═══════════════════ */}
+        {tab === 'messages' && (
+          <>
+            <div style={{ marginBottom: 28 }}>
+              <h1 className="ap-heading">Contact Messages</h1>
+              <p className="ap-muted" style={{ marginTop: 6 }}>
+                {messages.length} total · {unreadCount} unread
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <p className="ap-muted">Loading messages…</p>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="ap-card" style={{ padding: 64, textAlign: 'center' }}>
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+                  <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <p className="ap-subheading" style={{ marginBottom: 8 }}>No messages yet</p>
+                <p className="ap-muted">Contact form submissions will appear here.</p>
+              </div>
+            ) : (
+              <div>
+                {messages.map(m => (
+                  <div key={m.id} className="ap-card" style={{ padding: '18px 20px', marginBottom: 10, opacity: m.read ? 0.65 : 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: m.read ? 'rgba(255,255,255,0.15)' : '#4ade80', flexShrink: 0, marginTop: 4 }} />
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>{m.name}</span>
+                      <span className="ap-muted" style={{ fontSize: '0.75rem' }}>{m.email}</span>
+                      <span className="ap-muted" style={{ fontSize: '0.72rem', marginLeft: 'auto' }}>
+                        {m.createdAt ? formatDistanceToNow(new Date(m.createdAt), { addSuffix: true }) : ''}
+                      </span>
+                    </div>
+                    <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.85rem', color: '#4ade80', marginBottom: 6 }}>
+                      {m.subject}
+                    </p>
+                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                      {m.message}
+                    </p>
+                    {!m.read && (
+                      <button onClick={() => markRead(m.id)}
+                        className="ap-btn ap-btn-ghost"
+                        style={{ marginTop: 10, padding: '4px 12px', fontSize: '0.75rem' }}>
+                        Mark as read
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+      </main>
+    </div>
   );
 }
