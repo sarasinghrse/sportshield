@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [adminCode,  setAdminCode]  = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
@@ -267,19 +268,25 @@ export default function LoginPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
                     <span>Email:</span>
                     <code style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>DesiCodingClub@hack2skill.com</code>
-                    <button type="button" onClick={() => { navigator.clipboard.writeText('DesiCodingClub@hack2skill.com'); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex' }}
+                    <button type="button" onClick={() => { navigator.clipboard.writeText('DesiCodingClub@hack2skill.com'); setCopiedField('email'); setTimeout(() => setCopiedField(f => f === 'email' ? null : f), 1500); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedField === 'email' ? '#4ade80' : 'rgba(255,255,255,0.3)', padding: 2, display: 'flex', transition: 'color 0.2s' }}
                       title="Copy email">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      {copiedField === 'email'
+                        ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      }
                     </button>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
                     <span>Code:</span>
                     <code style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>SaraAnshuAmit</code>
-                    <button type="button" onClick={() => { navigator.clipboard.writeText('SaraAnshuAmit'); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex' }}
+                    <button type="button" onClick={() => { navigator.clipboard.writeText('SaraAnshuAmit'); setCopiedField('code'); setTimeout(() => setCopiedField(f => f === 'code' ? null : f), 1500); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedField === 'code' ? '#4ade80' : 'rgba(255,255,255,0.3)', padding: 2, display: 'flex', transition: 'color 0.2s' }}
                       title="Copy code">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      {copiedField === 'code'
+                        ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      }
                     </button>
                   </div>
                 </div>
