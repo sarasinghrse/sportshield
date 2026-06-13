@@ -17,3 +17,7 @@ qdrant-client
 c2pa-python
 cryptography
 numpy
+langchain
+langchain-google-genai
+langgraph
+pytesseract

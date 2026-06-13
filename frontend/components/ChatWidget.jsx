@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/router';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function ChatWidget() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'model', text: "Hi! I'm the SportShield Assistant. Ask me anything about the platform — features, how to protect your media, or how to get started." },
@@ -36,6 +38,13 @@ export default function ChatWidget() {
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'model', text: data.reply || 'Sorry, something went wrong.' }]);
+
+      // If the agent triggered navigation, route the user after a short delay
+      if (data.navigate_to) {
+        setTimeout(() => {
+          router.push(data.navigate_to);
+        }, 800);
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'model', text: "Couldn't reach the server. Please try again." }]);
     }
