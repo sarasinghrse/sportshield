@@ -77,6 +77,7 @@ export default function RadarPage() {
       setLoading(false);
       return;
     }
+    let useDemo = false;
     try {
       const [statsRes, eventsRes, detectionsRes, enfRes, crowdRes, lbRes, casesRes] = await Promise.all([
         fetch(`${API}/api/media/radar/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -87,14 +88,35 @@ export default function RadarPage() {
         fetch(`${API}/api/media/crowd/leaderboard?limit=10`).then(r => r.ok ? r.json() : { leaderboard: [] }).catch(() => ({ leaderboard: [] })),
         fetch(`${API}/api/media/enforce/cases`).then(r => r.ok ? r.json() : { cases: [] }).catch(() => ({ cases: [] })),
       ]);
-      setStats(statsRes);
-      setEvents(eventsRes.events || []);
-      setDetections(detectionsRes.detections || []);
-      setEnforcementStats(enfRes);
-      setCrowdStats(crowdRes);
-      setLeaderboard(lbRes.leaderboard || []);
-      setCases(casesRes.cases || []);
-    } catch (e) { console.error(e); }
+      const liveEvents = eventsRes.events || [];
+      const liveDet = detectionsRes.detections || [];
+      const liveCases = casesRes.cases || [];
+      const liveLb = lbRes.leaderboard || [];
+      const isEmpty = !statsRes && liveEvents.length === 0 && liveDet.length === 0;
+      if (isEmpty) {
+        useDemo = true;
+      } else {
+        setStats(statsRes || DEMO_RADAR_STATS);
+        setEvents(liveEvents.length > 0 ? liveEvents : DEMO_RADAR_EVENTS);
+        setDetections(liveDet.length > 0 ? liveDet : DEMO_DETECTIONS);
+        setEnforcementStats(enfRes || DEMO_ENFORCEMENT_STATS);
+        setCrowdStats(crowdRes || DEMO_CROWD_STATS);
+        setLeaderboard(liveLb.length > 0 ? liveLb : DEMO_LEADERBOARD);
+        setCases(liveCases.length > 0 ? liveCases : DEMO_CASES);
+      }
+    } catch (e) {
+      console.error(e);
+      useDemo = true;
+    }
+    if (useDemo) {
+      setStats(DEMO_RADAR_STATS);
+      setEvents(DEMO_RADAR_EVENTS);
+      setDetections(DEMO_DETECTIONS);
+      setEnforcementStats(DEMO_ENFORCEMENT_STATS);
+      setCases(DEMO_CASES);
+      setCrowdStats(DEMO_CROWD_STATS);
+      setLeaderboard(DEMO_LEADERBOARD);
+    }
     setLoading(false);
   }, [isDemo]);
 
