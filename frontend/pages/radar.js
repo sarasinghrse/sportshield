@@ -317,7 +317,7 @@ export default function RadarPage() {
               <p style={{ color: C.muted, margin: '4px 0 0', fontSize: '0.85rem' }}>Live stream piracy radar, enforcement & crowd network</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {(!loading && (!stats || stats.total_events === 0)) && (
+              {(!loading && (!stats || !stats.total_detections)) && (
                 <button onClick={seedWarRoom} disabled={seeding} className="wr-btn" style={{ background: C.green, color: '#fff', fontSize: '0.75rem', padding: '6px 16px', opacity: seeding ? 0.6 : 1 }}>
                   {seeding ? 'Seeding...' : 'Load Sample Data'}
                 </button>
