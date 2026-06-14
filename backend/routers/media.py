@@ -1908,3 +1908,204 @@ async def public_api_info():
         "auth": "Bearer token (Firebase Auth)",
         "rate_limit": "100 requests/minute (free tier)",
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SEED — populate Firestore with realistic war room data for demos
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/seed-warroom")
+async def seed_warroom(user_id: str = Query("demo_user")):
+    """
+    Seed Firestore with realistic war room data for a user.
+    Creates events, detections, enforcement cases, crowd contributors,
+    and leaderboard entries so the War Room looks fully operational.
+    """
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+
+    def ts(hours_ago=0):
+        return (now - timedelta(hours=hours_ago)).isoformat()
+
+    # ── 1. Radar Events ──
+    events = [
+        {
+            "event_id": f"evt_seed_001_{user_id[:8]}",
+            "event_name": "India vs Australia — T20 World Cup Semi-Final",
+            "teams": ["India", "Australia"],
+            "broadcaster": "Star Sports",
+            "league": "ICC T20 World Cup 2026",
+            "user_id": user_id,
+            "status": "monitoring",
+            "reference_fingerprints": [],
+            "reference_frame_hashes": [],
+            "suspect_count": 14,
+            "detection_count": 6,
+            "created_at": ts(48),
+            "updated_at": ts(1),
+        },
+        {
+            "event_id": f"evt_seed_002_{user_id[:8]}",
+            "event_name": "Arsenal vs Chelsea — Premier League GW34",
+            "teams": ["Arsenal", "Chelsea"],
+            "broadcaster": "Sky Sports",
+            "league": "Premier League",
+            "user_id": user_id,
+            "status": "monitoring",
+            "reference_fingerprints": [],
+            "reference_frame_hashes": [],
+            "suspect_count": 9,
+            "detection_count": 3,
+            "created_at": ts(72),
+            "updated_at": ts(6),
+        },
+        {
+            "event_id": f"evt_seed_003_{user_id[:8]}",
+            "event_name": "Real Madrid vs Barcelona — La Liga Clásico",
+            "teams": ["Real Madrid", "Barcelona"],
+            "broadcaster": "DAZN",
+            "league": "La Liga",
+            "user_id": user_id,
+            "status": "completed",
+            "reference_fingerprints": [],
+            "reference_frame_hashes": [],
+            "suspect_count": 24,
+            "detection_count": 9,
+            "created_at": ts(120),
+            "updated_at": ts(96),
+        },
+    ]
+
+    for e in events:
+        db.collection("radar_events").document(e["event_id"]).set(e)
+
+    # ── 2. Pirate Detections ──
+    detections = [
+        {"detection_id": f"det_seed_001_{user_id[:8]}", "event_id": events[0]["event_id"], "event_name": events[0]["event_name"], "user_id": user_id, "source_url": "https://pirate-stream.live/cricket-free", "composite_score": 0.94, "confidence": "HIGH", "verdict": "PIRATE_STREAM_DETECTED", "audio_score": 0.92, "visual_score": 0.88, "multimodal_signals": 4, "dmca_status": "filed", "detected_at": ts(2)},
+        {"detection_id": f"det_seed_002_{user_id[:8]}", "event_id": events[0]["event_id"], "event_name": events[0]["event_name"], "user_id": user_id, "source_url": "https://free-sports.tv/ind-v-aus", "composite_score": 0.87, "confidence": "HIGH", "verdict": "PIRATE_STREAM_DETECTED", "audio_score": 0.85, "visual_score": 0.80, "multimodal_signals": 3, "dmca_status": "resolved", "detected_at": ts(4)},
+        {"detection_id": f"det_seed_003_{user_id[:8]}", "event_id": events[1]["event_id"], "event_name": events[1]["event_name"], "user_id": user_id, "source_url": "https://soccer-streams.net/epl-live", "composite_score": 0.91, "confidence": "HIGH", "verdict": "PIRATE_STREAM_DETECTED", "audio_score": 0.89, "visual_score": 0.85, "multimodal_signals": 4, "dmca_status": "filed", "detected_at": ts(8)},
+        {"detection_id": f"det_seed_004_{user_id[:8]}", "event_id": events[2]["event_id"], "event_name": events[2]["event_name"], "user_id": user_id, "source_url": "https://futbol-gratis.io/clasico", "composite_score": 0.78, "confidence": "MEDIUM", "verdict": "PIRATE_STREAM_DETECTED", "audio_score": 0.72, "visual_score": 0.68, "multimodal_signals": 2, "dmca_status": "escalated", "detected_at": ts(100)},
+        {"detection_id": f"det_seed_005_{user_id[:8]}", "event_id": events[0]["event_id"], "event_name": events[0]["event_name"], "user_id": user_id, "source_url": "https://stream247.cc/live-cricket", "composite_score": 0.82, "confidence": "HIGH", "verdict": "PIRATE_STREAM_DETECTED", "audio_score": 0.79, "visual_score": 0.75, "multimodal_signals": 3, "dmca_status": "filed", "detected_at": ts(3)},
+    ]
+
+    for d in detections:
+        db.collection("radar_detections").document(d["detection_id"]).set(d)
+
+    # ── 3. Enforcement Cases ──
+    cases = [
+        {
+            "case_id": f"case_seed_001_{user_id[:8]}", "detection_id": detections[0]["detection_id"],
+            "event_id": events[0]["event_id"], "event_name": "India vs Australia — T20 WC",
+            "user_id": user_id, "source_url": "https://pirate-stream.live/cricket-free",
+            "platform": "unknown", "status": "dmca_filed", "priority": "critical",
+            "composite_score": 0.94, "confidence": "HIGH",
+            "evidence": {"items": [{"type": "audio_fingerprint_match", "score": 0.92, "description": "Audio fingerprint match: 92% similarity"}, {"type": "visual_frame_match", "score": 0.88, "description": "Visual frame match: 88% similarity"}], "item_count": 2, "collected_at": ts(2)},
+            "dmca": {"subject": "DMCA Takedown: Unauthorized stream of India vs Australia — T20 WC", "body": "Unauthorized re-stream detected", "platform": "unknown", "auto_generated": True, "filed_at": ts(1.5)},
+            "timeline": [
+                {"action": "case_created", "timestamp": ts(2), "detail": "Enforcement case created from pirate detection"},
+                {"action": "dmca_generated", "timestamp": ts(2), "detail": "DMCA generated for unknown platform"},
+                {"action": "dmca_filed", "timestamp": ts(1.5), "detail": "DMCA takedown filed"},
+            ],
+            "escalation_level": 0, "created_at": ts(2), "updated_at": ts(1.5), "resolved_at": None,
+        },
+        {
+            "case_id": f"case_seed_002_{user_id[:8]}", "detection_id": detections[2]["detection_id"],
+            "event_id": events[1]["event_id"], "event_name": "Arsenal vs Chelsea — PL",
+            "user_id": user_id, "source_url": "https://soccer-streams.net/epl-live",
+            "platform": "unknown", "status": "dmca_generated", "priority": "high",
+            "composite_score": 0.91, "confidence": "HIGH",
+            "evidence": {"items": [{"type": "audio_fingerprint_match", "score": 0.89, "description": "Audio fingerprint match: 89% similarity"}], "item_count": 1, "collected_at": ts(8)},
+            "dmca": {"subject": "DMCA Takedown: Unauthorized stream of Arsenal vs Chelsea", "body": "Unauthorized re-stream detected", "platform": "unknown", "auto_generated": True},
+            "timeline": [
+                {"action": "case_created", "timestamp": ts(8), "detail": "Enforcement case created"},
+                {"action": "dmca_generated", "timestamp": ts(8), "detail": "DMCA generated"},
+            ],
+            "escalation_level": 0, "created_at": ts(8), "updated_at": ts(8), "resolved_at": None,
+        },
+        {
+            "case_id": f"case_seed_003_{user_id[:8]}", "detection_id": detections[3]["detection_id"],
+            "event_id": events[2]["event_id"], "event_name": "Real Madrid vs Barcelona",
+            "user_id": user_id, "source_url": "https://futbol-gratis.io/clasico",
+            "platform": "unknown", "status": "escalated_host_notified", "priority": "critical",
+            "composite_score": 0.78, "confidence": "MEDIUM",
+            "evidence": {"items": [{"type": "audio_fingerprint_match", "score": 0.72, "description": "Audio fingerprint match: 72% similarity"}], "item_count": 1, "collected_at": ts(100)},
+            "dmca": {"subject": "DMCA Takedown: Unauthorized stream of El Clásico", "body": "Unauthorized re-stream detected", "platform": "unknown", "auto_generated": True, "filed_at": ts(98)},
+            "timeline": [
+                {"action": "case_created", "timestamp": ts(100), "detail": "Enforcement case created"},
+                {"action": "dmca_filed", "timestamp": ts(98), "detail": "DMCA takedown filed"},
+                {"action": "escalated_level_1", "timestamp": ts(96), "detail": "Re-filed DMCA with URGENT priority"},
+                {"action": "escalated_level_2", "timestamp": ts(72), "detail": "Notified hosting provider and domain registrar"},
+            ],
+            "escalation_level": 2, "created_at": ts(100), "updated_at": ts(72), "resolved_at": None,
+        },
+        {
+            "case_id": f"case_seed_004_{user_id[:8]}", "detection_id": detections[1]["detection_id"],
+            "event_id": events[0]["event_id"], "event_name": "India vs Australia — T20 WC",
+            "user_id": user_id, "source_url": "https://free-sports.tv/ind-v-aus",
+            "platform": "unknown", "status": "resolved", "priority": "high",
+            "composite_score": 0.87, "confidence": "HIGH",
+            "evidence": {"items": [{"type": "audio_fingerprint_match", "score": 0.85, "description": "Audio fingerprint match: 85% similarity"}], "item_count": 1, "collected_at": ts(4)},
+            "dmca": {"subject": "DMCA Takedown", "body": "Unauthorized re-stream detected", "platform": "unknown", "auto_generated": True, "filed_at": ts(3.5)},
+            "timeline": [
+                {"action": "case_created", "timestamp": ts(4), "detail": "Enforcement case created"},
+                {"action": "dmca_filed", "timestamp": ts(3.5), "detail": "DMCA takedown filed"},
+                {"action": "resolved", "timestamp": ts(3), "detail": "Case resolved: content_removed (took 1h 0m)"},
+            ],
+            "escalation_level": 0, "resolution": "content_removed",
+            "resolution_time_sec": 3600, "resolution_time_human": "1h 0m",
+            "created_at": ts(4), "updated_at": ts(3), "resolved_at": ts(3),
+        },
+        {
+            "case_id": f"case_seed_005_{user_id[:8]}", "detection_id": detections[4]["detection_id"],
+            "event_id": events[0]["event_id"], "event_name": "India vs Australia — T20 WC",
+            "user_id": user_id, "source_url": "https://stream247.cc/live-cricket",
+            "platform": "unknown", "status": "dmca_filed", "priority": "high",
+            "composite_score": 0.82, "confidence": "HIGH",
+            "evidence": {"items": [{"type": "audio_fingerprint_match", "score": 0.79, "description": "Audio fingerprint match: 79% similarity"}], "item_count": 1, "collected_at": ts(3)},
+            "dmca": {"subject": "DMCA Takedown", "body": "Unauthorized re-stream detected", "platform": "unknown", "auto_generated": True, "filed_at": ts(2.5)},
+            "timeline": [
+                {"action": "case_created", "timestamp": ts(3), "detail": "Enforcement case created"},
+                {"action": "dmca_filed", "timestamp": ts(2.5), "detail": "DMCA takedown filed"},
+                {"action": "escalated_level_1", "timestamp": ts(2), "detail": "Re-filed DMCA with URGENT priority"},
+            ],
+            "escalation_level": 1, "created_at": ts(3), "updated_at": ts(2), "resolved_at": None,
+        },
+    ]
+
+    for c in cases:
+        db.collection("enforcement_cases").document(c["case_id"]).set(c)
+
+    # ── 4. Crowd Contributors & Leaderboard ──
+    contributors = [
+        {"user_id": "piracyhunter_in", "display_name": "PiracyHunter_IN", "total_points": 4820, "submissions": 63, "verified_finds": 47, "false_reports": 2, "rank": "legend", "joined_at": ts(720), "badges": ["first_catch", "sharp_eye", "pirate_hunter", "points_master"]},
+        {"user_id": "streamwatch_uk", "display_name": "StreamWatch_UK", "total_points": 3150, "submissions": 44, "verified_finds": 31, "false_reports": 1, "rank": "expert", "joined_at": ts(600), "badges": ["first_catch", "sharp_eye", "pirate_hunter", "points_master"]},
+        {"user_id": "sportguard", "display_name": "SportGuard", "total_points": 2740, "submissions": 38, "verified_finds": 26, "false_reports": 3, "rank": "expert", "joined_at": ts(500), "badges": ["first_catch", "sharp_eye", "pirate_hunter", "points_master"]},
+        {"user_id": "cricketshield", "display_name": "CricketShield", "total_points": 1890, "submissions": 25, "verified_finds": 18, "false_reports": 0, "rank": "veteran", "joined_at": ts(480), "badges": ["first_catch", "sharp_eye", "points_master"]},
+        {"user_id": "footballpatrol", "display_name": "FootballPatrol", "total_points": 1420, "submissions": 20, "verified_finds": 14, "false_reports": 1, "rank": "veteran", "joined_at": ts(400), "badges": ["first_catch", "sharp_eye", "points_master"]},
+        {"user_id": "antipirate_sa", "display_name": "AntiPirate_SA", "total_points": 960, "submissions": 14, "verified_finds": 9, "false_reports": 0, "rank": "hunter", "joined_at": ts(300), "badges": ["first_catch"]},
+        {"user_id": "streamdetective", "display_name": "StreamDetective", "total_points": 710, "submissions": 11, "verified_finds": 7, "false_reports": 1, "rank": "hunter", "joined_at": ts(240), "badges": ["first_catch"]},
+        {"user_id": "mediawatch", "display_name": "MediaWatch", "total_points": 340, "submissions": 6, "verified_finds": 3, "false_reports": 0, "rank": "hunter", "joined_at": ts(120), "badges": ["first_catch"]},
+    ]
+
+    for c in contributors:
+        db.collection("crowd_contributors").document(c["user_id"]).set(c)
+
+    # ── 5. Sample Crowd Submissions ──
+    submissions = [
+        {"submission_id": f"sub_seed_001", "reporter_id": "piracyhunter_in", "suspect_url": "https://pirate-stream.live/cricket-free", "event_name": "India vs Australia — T20 WC", "platform": "unknown", "description": "Pirate re-stream with 30s delay", "status": "verified_pirate", "verification_result": "confirmed", "points_awarded": 45, "submitted_at": ts(3), "verified_at": ts(2.5)},
+        {"submission_id": f"sub_seed_002", "reporter_id": "streamwatch_uk", "suspect_url": "https://soccer-streams.net/epl-live", "event_name": "Arsenal vs Chelsea — PL GW34", "platform": "unknown", "description": "Full match pirate stream", "status": "verified_pirate", "verification_result": "confirmed", "points_awarded": 40, "submitted_at": ts(10), "verified_at": ts(9)},
+        {"submission_id": f"sub_seed_003", "reporter_id": "footballpatrol", "suspect_url": "https://futbol-gratis.io/clasico", "event_name": "Real Madrid vs Barcelona", "platform": "unknown", "description": "El Clásico pirate stream found on Telegram-linked site", "status": "verified_pirate", "verification_result": "confirmed", "points_awarded": 55, "submitted_at": ts(100), "verified_at": ts(99)},
+    ]
+
+    for s in submissions:
+        db.collection("crowd_submissions").document(s["submission_id"]).set(s)
+
+    return {
+        "seeded": True,
+        "user_id": user_id,
+        "events": len(events),
+        "detections": len(detections),
+        "cases": len(cases),
+        "contributors": len(contributors),
+        "submissions": len(submissions),
+    }
