@@ -44,6 +44,7 @@ export default function RadarPage() {
   const [cases, setCases] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
 
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [eventForm, setEventForm] = useState({ eventName: '', teams: '', broadcaster: '', league: '' });
@@ -229,6 +230,16 @@ export default function RadarPage() {
     } catch (e) { console.error(e); }
   };
 
+  const seedWarRoom = async () => {
+    const uid = user?.uid || 'demo_user';
+    setSeeding(true);
+    try {
+      await fetch(`${API}/api/media/seed-warroom?user_id=${uid}`, { method: 'POST' });
+      await fetchData();
+    } catch (e) { console.error(e); }
+    setSeeding(false);
+  };
+
   if (!router.isReady || (authLoading && !isDemo)) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: C.muted, fontFamily: 'Barlow, sans-serif' }}>Loading…</p>
@@ -306,6 +317,11 @@ export default function RadarPage() {
               <p style={{ color: C.muted, margin: '4px 0 0', fontSize: '0.85rem' }}>Live stream piracy radar, enforcement & crowd network</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {(!loading && (!stats || stats.total_events === 0)) && (
+                <button onClick={seedWarRoom} disabled={seeding} className="wr-btn" style={{ background: C.green, color: '#fff', fontSize: '0.75rem', padding: '6px 16px', opacity: seeding ? 0.6 : 1 }}>
+                  {seeding ? 'Seeding...' : 'Load Sample Data'}
+                </button>
+              )}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ade80', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'pulse 2s infinite' }} />
                 Engine Active
