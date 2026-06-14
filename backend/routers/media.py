@@ -56,6 +56,7 @@ from services.crowd_network import (
     list_bounties,
     get_network_stats,
 )
+from services.piracy_scanner import scan_event_for_pirates
 from config import SERPAPI_KEY, HF_TOKEN
 import uuid
 import threading
@@ -1511,6 +1512,8 @@ class CreateEventRequest(BaseModel):
     teams: list[str] = []
     broadcaster: str = ""
     league: str = ""
+    dateTime: str = ""
+    knownPirateSites: list[str] = []
 
 
 @router.post("/radar/events")
@@ -1527,6 +1530,18 @@ async def create_radar_event(req: CreateEventRequest, user_id: str = "demo_user"
         user_id=user_id,
     )
     return event
+
+
+@router.post("/radar/events/{event_id}/scan")
+async def scan_for_pirates(event_id: str, user_id: str = "demo_user"):
+    """
+    Search the web for unauthorized streams/clips of a monitored event.
+    Uses Gemini with Google Search grounding to find pirate sites.
+    """
+    result = await scan_event_for_pirates(event_id, user_id)
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
 
 @router.get("/radar/events")

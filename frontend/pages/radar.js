@@ -47,7 +47,7 @@ export default function RadarPage() {
   const [seeding, setSeeding] = useState(false);
 
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [eventForm, setEventForm] = useState({ eventName: '', teams: '', broadcaster: '', league: '' });
+  const [eventForm, setEventForm] = useState({ eventName: '', teams: '', broadcaster: '', league: '', dateTime: '', knownPirateSites: '' });
   const [creating, setCreating] = useState(false);
 
   const [showSubmitSuspect, setShowSubmitSuspect] = useState(false);
@@ -56,6 +56,9 @@ export default function RadarPage() {
   const [suspectUrl, setSuspectUrl] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+
+  const [scanning, setScanning] = useState({});
+  const [scanResults, setScanResults] = useState({});
 
   const [showCrowdSubmit, setShowCrowdSubmit] = useState(false);
   const [crowdForm, setCrowdForm] = useState({ suspectUrl: '', eventName: '', description: '' });
@@ -142,7 +145,7 @@ export default function RadarPage() {
       setEvents(prev => [newEvt, ...prev]);
       setStats(prev => prev ? { ...prev, active_events: (prev.active_events || 0) + 1 } : prev);
       setShowCreateEvent(false);
-      setEventForm({ eventName: '', teams: '', broadcaster: '', league: '' });
+      setEventForm({ eventName: '', teams: '', broadcaster: '', league: '', dateTime: '', knownPirateSites: '' });
       return;
     }
     setCreating(true);
@@ -155,15 +158,37 @@ export default function RadarPage() {
           teams: eventForm.teams.split(',').map(t => t.trim()).filter(Boolean),
           broadcaster: eventForm.broadcaster,
           league: eventForm.league,
+          dateTime: eventForm.dateTime,
+          knownPirateSites: eventForm.knownPirateSites ? eventForm.knownPirateSites.split(',').map(s => s.trim()).filter(Boolean) : [],
         }),
       });
       if (res.ok) {
+        const created = await res.json();
         setShowCreateEvent(false);
-        setEventForm({ eventName: '', teams: '', broadcaster: '', league: '' });
+        setEventForm({ eventName: '', teams: '', broadcaster: '', league: '', dateTime: '', knownPirateSites: '' });
         fetchData();
+        // Auto-trigger scan after creating event
+        if (created.event_id) {
+          scanForPirates(created.event_id);
+        }
       }
     } catch (e) { console.error(e); }
     setCreating(false);
+  };
+
+  const scanForPirates = async (eventId) => {
+    setScanning(prev => ({ ...prev, [eventId]: true }));
+    setScanResults(prev => ({ ...prev, [eventId]: null }));
+    try {
+      const uid = user?.uid || 'demo_user';
+      const res = await fetch(`${API}/api/media/radar/events/${eventId}/scan?user_id=${uid}`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setScanResults(prev => ({ ...prev, [eventId]: data }));
+        fetchData();
+      }
+    } catch (e) { console.error(e); }
+    setScanning(prev => ({ ...prev, [eventId]: false }));
   };
 
   const submitSuspect = async () => {
@@ -276,6 +301,7 @@ export default function RadarPage() {
         .wr-nav-link:hover { color: #5cc85c; background: rgba(26,92,26,0.15); }
         .wr-nav-link-active { color: #5cc85c !important; }
         .wr-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .wr-logo img { height: 32px; }
         .wr-logo-text { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.3rem; color: #5cc85c; letter-spacing: 0.06em; }
       `}</style>
@@ -317,11 +343,6 @@ export default function RadarPage() {
               <p style={{ color: C.muted, margin: '4px 0 0', fontSize: '0.85rem' }}>Live stream piracy radar, enforcement & crowd network</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {(!loading && (!stats || !stats.total_detections)) && (
-                <button onClick={seedWarRoom} disabled={seeding} className="wr-btn" style={{ background: C.green, color: '#fff', fontSize: '0.75rem', padding: '6px 16px', opacity: seeding ? 0.6 : 1 }}>
-                  {seeding ? 'Seeding...' : 'Load Sample Data'}
-                </button>
-              )}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ade80', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'pulse 2s infinite' }} />
                 Engine Active
@@ -372,15 +393,18 @@ export default function RadarPage() {
                   {/* Create Event Form */}
                   {showCreateEvent && (
                     <div className="wr-card" style={{ padding: 24, marginBottom: 20, border: `1px solid rgba(60,170,60,0.3)` }}>
-                      <h3 className="wr-section-title" style={{ marginBottom: 16 }}>Create Monitored Event</h3>
+                      <h3 className="wr-section-title" style={{ marginBottom: 6 }}>Monitor a Stream</h3>
+                      <p style={{ color: C.muted, fontSize: '0.78rem', margin: '0 0 16px' }}>Enter your stream details and we'll scan the web for unauthorized re-streams and clips.</p>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                        <input className="wr-input" placeholder="Event name (e.g. Arsenal vs Chelsea)" value={eventForm.eventName} onChange={e => setEventForm({ ...eventForm, eventName: e.target.value })} />
-                        <input className="wr-input" placeholder="Teams (comma separated)" value={eventForm.teams} onChange={e => setEventForm({ ...eventForm, teams: e.target.value })} />
-                        <input className="wr-input" placeholder="Broadcaster (e.g. Sky Sports)" value={eventForm.broadcaster} onChange={e => setEventForm({ ...eventForm, broadcaster: e.target.value })} />
-                        <input className="wr-input" placeholder="League (e.g. Premier League)" value={eventForm.league} onChange={e => setEventForm({ ...eventForm, league: e.target.value })} />
+                        <input className="wr-input" placeholder="Event name (e.g. Arsenal vs Chelsea — Premier League Matchweek 28)" value={eventForm.eventName} onChange={e => setEventForm({ ...eventForm, eventName: e.target.value })} />
+                        <input className="wr-input" placeholder="Teams (comma separated, e.g. Arsenal, Chelsea)" value={eventForm.teams} onChange={e => setEventForm({ ...eventForm, teams: e.target.value })} />
+                        <input className="wr-input" placeholder="Broadcasters (e.g. Sky Sports(UK), NBC(US), StarSports(India))" value={eventForm.broadcaster} onChange={e => setEventForm({ ...eventForm, broadcaster: e.target.value })} style={{ gridColumn: '1 / -1' }} />
+                        <input className="wr-input" placeholder="League (e.g. English Premier League)" value={eventForm.league} onChange={e => setEventForm({ ...eventForm, league: e.target.value })} />
+                        <input className="wr-input" type="datetime-local" placeholder="Date & Time of Stream" value={eventForm.dateTime} onChange={e => setEventForm({ ...eventForm, dateTime: e.target.value })} style={{ colorScheme: 'dark' }} />
+                        <input className="wr-input" placeholder="Known pirate sites (optional, comma separated)" value={eventForm.knownPirateSites} onChange={e => setEventForm({ ...eventForm, knownPirateSites: e.target.value })} style={{ gridColumn: '1 / -1' }} />
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                        <button onClick={createEvent} disabled={creating || !eventForm.eventName} className="wr-btn" style={{ background: C.green, color: '#fff', opacity: creating || !eventForm.eventName ? 0.5 : 1 }}>{creating ? 'Creating...' : 'Create Event'}</button>
+                        <button onClick={createEvent} disabled={creating || !eventForm.eventName} className="wr-btn" style={{ background: C.green, color: '#fff', opacity: creating || !eventForm.eventName ? 0.5 : 1 }}>{creating ? 'Creating & Scanning...' : 'Create & Scan for Pirates'}</button>
                         <button onClick={() => setShowCreateEvent(false)} className="wr-btn-ghost">Cancel</button>
                       </div>
                     </div>
@@ -438,26 +462,75 @@ export default function RadarPage() {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
                       {events.map(ev => (
-                        <div key={ev.event_id} className="wr-card" style={{ padding: '18px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: C.heading }}>{ev.event_name}</div>
-                            <div style={{ color: C.muted, fontSize: '0.78rem', marginTop: 3 }}>
-                              {ev.teams?.join(' vs ') || 'No teams'} {ev.broadcaster ? `· ${ev.broadcaster}` : ''} {ev.league ? `· ${ev.league}` : ''}
+                        <div key={ev.event_id} className="wr-card" style={{ padding: '18px 22px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: C.heading }}>{ev.event_name}</div>
+                              <div style={{ color: C.muted, fontSize: '0.78rem', marginTop: 3 }}>
+                                {ev.teams?.join(' vs ') || 'No teams'} {ev.broadcaster ? `· ${ev.broadcaster}` : ''} {ev.league ? `· ${ev.league}` : ''}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.blue }}>{ev.suspect_count || 0}</div>
+                                <div style={{ fontSize: '0.65rem', color: C.muted, textTransform: 'uppercase' }}>Suspects</div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.red }}>{ev.detection_count || 0}</div>
+                                <div style={{ fontSize: '0.65rem', color: C.muted, textTransform: 'uppercase' }}>Pirates</div>
+                              </div>
+                              <button
+                                onClick={() => scanForPirates(ev.event_id)}
+                                disabled={scanning[ev.event_id]}
+                                className="wr-btn"
+                                style={{ background: C.red, color: '#fff', fontSize: '0.72rem', padding: '8px 16px', opacity: scanning[ev.event_id] ? 0.6 : 1 }}
+                              >
+                                {scanning[ev.event_id] ? 'Scanning...' : 'Scan for Pirates'}
+                              </button>
+                              <span className="wr-badge" style={{ background: ev.status === 'monitoring' ? 'rgba(74,222,128,0.1)' : 'rgba(148,163,184,0.1)', color: ev.status === 'monitoring' ? '#4ade80' : '#94a3b8', border: `1px solid ${ev.status === 'monitoring' ? 'rgba(74,222,128,0.2)' : 'rgba(148,163,184,0.15)'}` }}>
+                                {ev.status}
+                              </span>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.blue }}>{ev.suspect_count || 0}</div>
-                              <div style={{ fontSize: '0.65rem', color: C.muted, textTransform: 'uppercase' }}>Suspects</div>
+
+                          {/* Scan Results for this event */}
+                          {scanResults[ev.event_id] && (
+                            <div style={{ marginTop: 14, padding: 16, background: 'rgba(239,68,68,0.05)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.9rem', color: C.red }}>
+                                  {scanResults[ev.event_id].total_found} Unauthorized {scanResults[ev.event_id].total_found === 1 ? 'Stream' : 'Streams'} Found
+                                </div>
+                                <button onClick={() => setScanResults(prev => { const n = { ...prev }; delete n[ev.event_id]; return n; })} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '0.8rem' }}>Dismiss</button>
+                              </div>
+                              {(scanResults[ev.event_id].detections || []).map(det => (
+                                <div key={det.detection_id} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.88rem', color: C.heading }}>{det.platform || 'Unknown Site'}</div>
+                                    <div style={{ color: C.blue, fontSize: '0.75rem', marginTop: 2, wordBreak: 'break-all' }}>{det.source_url}</div>
+                                    <div style={{ color: C.muted, fontSize: '0.72rem', marginTop: 3 }}>{det.piracy_type || det.description || 'Unauthorized stream'}</div>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 12 }}>
+                                    <span className="wr-badge" style={{
+                                      background: det.confidence === 'high' ? 'rgba(239,68,68,0.15)' : det.confidence === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(148,163,184,0.15)',
+                                      color: det.confidence === 'high' ? C.red : det.confidence === 'medium' ? C.orange : '#94a3b8',
+                                      border: `1px solid ${det.confidence === 'high' ? 'rgba(239,68,68,0.3)' : det.confidence === 'medium' ? 'rgba(245,158,11,0.3)' : 'rgba(148,163,184,0.2)'}`,
+                                    }}>
+                                      {det.confidence}
+                                    </span>
+                                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.1rem', color: C.orange }}>{(det.composite_score * 100).toFixed(0)}%</div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.red }}>{ev.detection_count || 0}</div>
-                              <div style={{ fontSize: '0.65rem', color: C.muted, textTransform: 'uppercase' }}>Pirates</div>
+                          )}
+
+                          {/* Scanning indicator */}
+                          {scanning[ev.event_id] && (
+                            <div style={{ marginTop: 14, padding: 16, textAlign: 'center', color: C.muted, fontSize: '0.82rem' }}>
+                              <div style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(239,68,68,0.3)', borderTopColor: C.red, borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 8, verticalAlign: 'middle' }} />
+                              Searching the web for unauthorized streams of {ev.event_name}...
                             </div>
-                            <span className="wr-badge" style={{ background: ev.status === 'monitoring' ? 'rgba(74,222,128,0.1)' : 'rgba(148,163,184,0.1)', color: ev.status === 'monitoring' ? '#4ade80' : '#94a3b8', border: `1px solid ${ev.status === 'monitoring' ? 'rgba(74,222,128,0.2)' : 'rgba(148,163,184,0.15)'}` }}>
-                              {ev.status}
-                            </span>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -470,13 +543,21 @@ export default function RadarPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {detections.map(d => (
                           <div key={d.detection_id} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.92rem', color: C.red }}>{d.event_name}</div>
-                              <div style={{ color: C.muted, fontSize: '0.75rem', marginTop: 2 }}>
-                                {d.source_url || 'Unknown source'} · Score: {(d.composite_score * 100).toFixed(0)}%
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.92rem', color: C.red }}>{d.event_name}</div>
+                                {d.platform && (
+                                  <span className="wr-badge" style={{ background: 'rgba(96,165,250,0.1)', color: C.blue, border: '1px solid rgba(96,165,250,0.2)', fontSize: '0.62rem' }}>{d.platform}</span>
+                                )}
+                              </div>
+                              <div style={{ color: C.blue, fontSize: '0.75rem', marginTop: 2, wordBreak: 'break-all' }}>
+                                {d.source_url || 'Unknown source'}
+                              </div>
+                              <div style={{ color: C.muted, fontSize: '0.72rem', marginTop: 2 }}>
+                                {d.piracy_type || d.description || ''} {d.piracy_type || d.description ? '·' : ''} Score: {(d.composite_score * 100).toFixed(0)}%
                               </div>
                             </div>
-                            <span className="wr-badge" style={{ background: d.confidence === 'HIGH' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: d.confidence === 'HIGH' ? C.red : C.orange, border: `1px solid ${d.confidence === 'HIGH' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
+                            <span className="wr-badge" style={{ background: (d.confidence === 'HIGH' || d.confidence === 'high') ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: (d.confidence === 'HIGH' || d.confidence === 'high') ? C.red : C.orange, border: `1px solid ${(d.confidence === 'HIGH' || d.confidence === 'high') ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
                               {d.confidence}
                             </span>
                           </div>
@@ -621,6 +702,7 @@ export default function RadarPage() {
                       ]},
                       { title: 'Detect', color: C.red, endpoints: [
                         'POST /api/media/radar/events — Create monitored event',
+                        'POST /api/media/radar/events/{id}/scan — Scan web for pirate streams',
                         'POST /api/media/radar/events/{id}/reference — Upload reference clip',
                         'POST /api/media/radar/events/{id}/suspect — Submit suspect stream',
                         'GET /api/media/radar/detections — List pirate detections',
