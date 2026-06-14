@@ -1,28 +1,22 @@
 """
 Autonomous Enforcement Agent — Phase 3.
 
-The agent that closes the loop: Detection → Evidence → DMCA → Escalation.
-
-On a confirmed pirate detection:
-  1. Gathers evidence (screenshots, fingerprint scores, timestamps)
-  2. Auto-generates platform-specific DMCA takedown
-  3. Files it (or queues for filing via platform API/webform)
-  4. Monitors response — if unactioned within threshold, escalates
-  5. Logs everything to a case file for legal use
-
-Target: action within 30 minutes — beating 97.3% of the industry.
+Detection → Evidence → DMCA → Escalation, persisted in Firestore.
 """
 import uuid
 import json
 from datetime import datetime, timezone, timedelta
 
 from services.dmca_generator import generate_dmca_notice, get_platform_info
+from services.firebase_client import db
 
+# ── Firestore collections ──────────────────────────────────────────────
 
-# ── In-memory case store ────────────────────────────────────────────────
+CASES_COL = "enforcement_cases"
+LOG_COL = "enforcement_log"
 
-_cases: dict[str, dict] = {}
-_enforcement_log: list[dict] = []
+def _col(name):
+    return db.collection(name)
 
 # Escalation thresholds
 INITIAL_RESPONSE_MINUTES = 30
@@ -35,20 +29,13 @@ def create_enforcement_case(
     detection: dict,
     user_id: str = "demo_user",
 ) -> dict:
-    """
-    Create a full enforcement case from a pirate detection.
-    Automatically gathers evidence and generates the DMCA.
-    """
     case_id = f"case_{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc)
 
     source_url = detection.get("source_url", "")
     platform = _detect_platform(source_url)
 
-    # Build evidence package
     evidence = _build_evidence(detection)
-
-    # Generate DMCA notice
     dmca = _generate_dmca(detection, platform, evidence, user_id)
 
     case = {
@@ -89,9 +76,9 @@ def create_enforcement_case(
         "resolved_at": None,
     }
 
-    _cases[case_id] = case
+    _col(CASES_COL).document(case_id).set(case)
 
-    _enforcement_log.append({
+    _col(LOG_COL).add({
         "action": "case_created",
         "case_id": case_id,
         "platform": platform,
@@ -102,13 +89,10 @@ def create_enforcement_case(
 
 
 def file_dmca(case_id: str) -> dict:
-    """
-    File the DMCA takedown notice.
-    In production this would call platform APIs; for demo we simulate filing.
-    """
-    case = _cases.get(case_id)
-    if not case:
+    doc = _col(CASES_COL).document(case_id).get()
+    if not doc.exists:
         return {"error": f"Case {case_id} not found"}
+    case = doc.to_dict()
 
     now = datetime.now(timezone.utc)
     platform = case.get("platform", "unknown")
@@ -125,10 +109,11 @@ def file_dmca(case_id: str) -> dict:
         "timestamp": now.isoformat(),
         "detail": f"DMCA takedown filed via {platform_info.get('method', 'webform')} for {platform}",
     })
-
     case["updated_at"] = now.isoformat()
 
-    _enforcement_log.append({
+    _col(CASES_COL).document(case_id).set(case)
+
+    _col(LOG_COL).add({
         "action": "dmca_filed",
         "case_id": case_id,
         "platform": platform,
@@ -146,17 +131,10 @@ def file_dmca(case_id: str) -> dict:
 
 
 def escalate_case(case_id: str) -> dict:
-    """
-    Escalate an enforcement case to the next level.
-
-    Escalation ladder:
-      Level 0 → 1: Re-file DMCA with urgency flag
-      Level 1 → 2: Contact hosting provider / registrar
-      Level 2 → 3: Prepare legal notice package
-    """
-    case = _cases.get(case_id)
-    if not case:
+    doc = _col(CASES_COL).document(case_id).get()
+    if not doc.exists:
         return {"error": f"Case {case_id} not found"}
+    case = doc.to_dict()
 
     now = datetime.now(timezone.utc)
     current_level = case.get("escalation_level", 0)
@@ -196,10 +174,11 @@ def escalate_case(case_id: str) -> dict:
         "timestamp": now.isoformat(),
         "detail": esc["action"],
     })
-
     case["updated_at"] = now.isoformat()
 
-    _enforcement_log.append({
+    _col(CASES_COL).document(case_id).set(case)
+
+    _col(LOG_COL).add({
         "action": f"escalated_level_{new_level}",
         "case_id": case_id,
         "timestamp": now.isoformat(),
@@ -215,10 +194,10 @@ def escalate_case(case_id: str) -> dict:
 
 
 def resolve_case(case_id: str, resolution: str = "content_removed") -> dict:
-    """Mark a case as resolved (pirate stream taken down)."""
-    case = _cases.get(case_id)
-    if not case:
+    doc = _col(CASES_COL).document(case_id).get()
+    if not doc.exists:
         return {"error": f"Case {case_id} not found"}
+    case = doc.to_dict()
 
     now = datetime.now(timezone.utc)
     created = datetime.fromisoformat(case["created_at"])
@@ -235,10 +214,11 @@ def resolve_case(case_id: str, resolution: str = "content_removed") -> dict:
         "timestamp": now.isoformat(),
         "detail": f"Case resolved: {resolution} (took {case['resolution_time_human']})",
     })
-
     case["updated_at"] = now.isoformat()
 
-    _enforcement_log.append({
+    _col(CASES_COL).document(case_id).set(case)
+
+    _col(LOG_COL).add({
         "action": "resolved",
         "case_id": case_id,
         "resolution": resolution,
@@ -255,17 +235,18 @@ def resolve_case(case_id: str, resolution: str = "content_removed") -> dict:
 
 
 def get_case(case_id: str) -> dict | None:
-    return _cases.get(case_id)
+    doc = _col(CASES_COL).document(case_id).get()
+    return doc.to_dict() if doc.exists else None
 
 
 def list_cases(user_id: str = "demo_user", status: str = None) -> list[dict]:
+    query = _col(CASES_COL).where("user_id", "==", user_id)
+    if status:
+        query = query.where("status", "==", status)
+    docs = query.stream()
     results = []
-    for c in _cases.values():
-        if c.get("user_id") != user_id:
-            continue
-        if status and c.get("status") != status:
-            continue
-        # Return summary without full evidence/timeline
+    for d in docs:
+        c = d.to_dict()
         results.append({
             "case_id": c["case_id"],
             "event_name": c.get("event_name", ""),
@@ -282,8 +263,8 @@ def list_cases(user_id: str = "demo_user", status: str = None) -> list[dict]:
 
 
 def get_enforcement_stats(user_id: str = "demo_user") -> dict:
-    """Dashboard metrics for the enforcement system."""
-    user_cases = [c for c in _cases.values() if c.get("user_id") == user_id]
+    docs = list(_col(CASES_COL).where("user_id", "==", user_id).stream())
+    user_cases = [d.to_dict() for d in docs]
     resolved = [c for c in user_cases if c.get("status") == "resolved"]
     active = [c for c in user_cases if c.get("status") != "resolved"]
 
@@ -312,12 +293,11 @@ def get_enforcement_stats(user_id: str = "demo_user") -> dict:
 
 
 def get_cases_needing_escalation(user_id: str = "demo_user") -> list[dict]:
-    """Find cases past their escalation deadline."""
     now = datetime.now(timezone.utc)
+    docs = _col(CASES_COL).where("user_id", "==", user_id).stream()
     results = []
-    for c in _cases.values():
-        if c.get("user_id") != user_id:
-            continue
+    for d in docs:
+        c = d.to_dict()
         if c.get("status") == "resolved":
             continue
         next_esc = c.get("next_escalation_at")
@@ -335,7 +315,6 @@ def get_cases_needing_escalation(user_id: str = "demo_user") -> list[dict]:
 # ── Internal helpers ────────────────────────────────────────────────────
 
 def _build_evidence(detection: dict) -> dict:
-    """Build an evidence package from detection data."""
     items = []
 
     if detection.get("audio_score"):
@@ -380,7 +359,6 @@ def _build_evidence(detection: dict) -> dict:
 
 
 def _generate_dmca(detection: dict, platform: str, evidence: dict, user_id: str) -> dict:
-    """Generate a DMCA takedown notice for the detected pirate stream."""
     source_url = detection.get("source_url", "")
     event_name = detection.get("event_name", "Protected sports broadcast")
 
@@ -407,7 +385,6 @@ def _generate_dmca(detection: dict, platform: str, evidence: dict, user_id: str)
 
 
 def _detect_platform(url: str) -> str:
-    """Detect which platform a URL belongs to."""
     url_lower = url.lower()
     platforms = {
         "youtube": ["youtube.com", "youtu.be"],

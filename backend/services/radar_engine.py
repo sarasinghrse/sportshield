@@ -8,12 +8,6 @@ This is the brain of Phase 2. It coordinates:
   4. Visual frame comparison (PDQ hash + CLIP similarity)
   5. Multimodal confirmation (OCR + logo + commentary)
   6. Detection creation (Firestore alerts with full evidence chain)
-
-Architecture:
-  - An "event" is a monitored sports match (e.g., "Arsenal vs Chelsea")
-  - Each event has a reference fingerprint set (from the official broadcast)
-  - Suspects are submitted or discovered, sampled, and matched against reference
-  - Confirmed pirate streams become detections → DMCA pipeline
 """
 import io
 import os
@@ -24,6 +18,7 @@ from PIL import Image
 
 from services.audio_fingerprint import fingerprint_audio, compare_fingerprints, extract_audio_bytes
 from services.multimodal_confirm import confirm_match
+from services.firebase_client import db
 
 # Optional imports for visual matching
 try:
@@ -39,11 +34,15 @@ except ImportError:
     HAS_CLIP = False
 
 
-# ── In-memory store (production would use Redis/Firestore) ──────────────
+# ── Firestore collections ──────────────────────────────────────────────
 
-_events: dict[str, dict] = {}       # event_id → event metadata + reference fingerprints
-_detections: dict[str, dict] = {}   # detection_id → confirmed pirate detection
-_suspects: dict[str, dict] = {}     # suspect_id → suspect analysis results
+EVENTS_COL = "radar_events"
+DETECTIONS_COL = "radar_detections"
+SUSPECTS_COL = "radar_suspects"
+
+
+def _col(name):
+    return db.collection(name)
 
 
 def create_event(
@@ -53,10 +52,6 @@ def create_event(
     league: str = "",
     user_id: str = "demo_user",
 ) -> dict:
-    """
-    Create a monitored event (sports match).
-    This is the anchor — all reference clips and suspects attach to an event.
-    """
     event_id = f"evt_{uuid.uuid4().hex[:12]}"
 
     event = {
@@ -75,29 +70,25 @@ def create_event(
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    _events[event_id] = event
+    _col(EVENTS_COL).document(event_id).set(event)
     return event
 
 
 def get_event(event_id: str) -> dict | None:
-    return _events.get(event_id)
+    doc = _col(EVENTS_COL).document(event_id).get()
+    return doc.to_dict() if doc.exists else None
 
 
 def list_events(user_id: str = "demo_user") -> list[dict]:
+    docs = _col(EVENTS_COL).where("user_id", "==", user_id).stream()
     return [
-        {k: v for k, v in e.items() if k not in ("reference_fingerprints", "reference_frame_hashes")}
-        for e in _events.values()
-        if e["user_id"] == user_id
+        {k: v for k, v in d.to_dict().items() if k not in ("reference_fingerprints", "reference_frame_hashes")}
+        for d in docs
     ]
 
 
 def ingest_reference(event_id: str, file_bytes: bytes, filename: str = "") -> dict:
-    """
-    Ingest a reference clip from the official broadcast.
-    Extracts audio fingerprint + visual frame hashes.
-    These become the baseline we compare suspects against.
-    """
-    event = _events.get(event_id)
+    event = get_event(event_id)
     if not event:
         return {"error": f"Event {event_id} not found"}
 
@@ -113,10 +104,10 @@ def ingest_reference(event_id: str, file_bytes: bytes, filename: str = "") -> di
             "segments": audio_fp.get("segment_count", 0),
         }
 
-    # ── Visual frame hashes (extract frames from video) ──
+    # ── Visual frame hashes ──
     frames = _extract_frames(file_bytes)
     frame_hashes = []
-    for i, frame_bytes in enumerate(frames[:10]):  # Up to 10 key frames
+    for i, frame_bytes in enumerate(frames[:10]):
         try:
             img = Image.open(io.BytesIO(frame_bytes))
             if HAS_PDQ:
@@ -138,6 +129,8 @@ def ingest_reference(event_id: str, file_bytes: bytes, filename: str = "") -> di
         }
 
     event["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _col(EVENTS_COL).document(event_id).set(event)
+
     result["status"] = "ingested"
     return result
 
@@ -148,16 +141,7 @@ def analyze_suspect(
     source_url: str = "",
     filename: str = "",
 ) -> dict:
-    """
-    Analyze a suspect stream/clip against the event's reference material.
-
-    Pipeline:
-      1. Audio fingerprint → compare against all reference fingerprints
-      2. Frame extraction → PDQ compare against reference frames
-      3. Multimodal confirmation (if audio match > threshold)
-      4. Score aggregation → detection creation if confirmed
-    """
-    event = _events.get(event_id)
+    event = get_event(event_id)
     if not event:
         return {"error": f"Event {event_id} not found"}
 
@@ -178,7 +162,6 @@ def analyze_suspect(
     if suspect_audio_fp.get("fingerprint"):
         result["audio_fingerprint"] = suspect_audio_fp["fingerprint"][:16] + "..."
 
-        # Compare against each reference fingerprint
         best_audio = {"match": False, "score": 0}
         for ref_fp in event.get("reference_fingerprints", []):
             comparison = compare_fingerprints(ref_fp, suspect_audio_fp)
@@ -201,9 +184,9 @@ def analyze_suspect(
         matched_frames = 0
         total_compared = 0
 
-        for frame_bytes in suspect_frames[:5]:
+        for frame_bytes_item in suspect_frames[:5]:
             try:
-                img = Image.open(io.BytesIO(frame_bytes))
+                img = Image.open(io.BytesIO(frame_bytes_item))
                 if HAS_PDQ:
                     suspect_pdq = compute_pdq_from_pil(img)
                     if suspect_pdq.get("hash"):
@@ -228,14 +211,12 @@ def analyze_suspect(
         result["visual_match"] = visual_match
 
     # ── 3. Multimodal Confirmation ──
-    # Only run if audio OR visual shows potential match
     should_confirm = (
         audio_match.get("score", 0) > 0.3 or
         visual_match.get("score", 0) > 0.2
     )
 
     if should_confirm:
-        # Extract audio for Whisper
         audio_wav = extract_audio_bytes(file_bytes, max_seconds=30)
 
         reference_info = {
@@ -259,7 +240,6 @@ def analyze_suspect(
     visual_score = visual_match.get("score", 0)
     multimodal_score = result["multimodal"].get("composite_score", 0)
 
-    # Weighted composite: audio 50%, visual 30%, multimodal 20%
     composite = (audio_score * 0.5) + (visual_score * 0.3) + (multimodal_score * 0.2)
 
     is_pirate = (
@@ -282,47 +262,49 @@ def analyze_suspect(
         result["verdict"] = "CLEAN"
         result["confidence"] = "none"
 
-    # Store suspect
-    _suspects[suspect_id] = result
+    # Store suspect in Firestore
+    _col(SUSPECTS_COL).document(suspect_id).set(result)
+
+    # Update event counters
     event["suspect_count"] = event.get("suspect_count", 0) + 1
 
-    # Create detection if confirmed pirate
     if is_pirate:
         detection = _create_detection(event, result, source_url)
         result["detection_id"] = detection["detection_id"]
         event["detection_count"] = event.get("detection_count", 0) + 1
 
     event["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _col(EVENTS_COL).document(event_id).set(event)
+
     return result
 
 
 def get_detections(event_id: str = None, user_id: str = "demo_user") -> list[dict]:
-    """Get all pirate detections, optionally filtered by event."""
-    results = []
-    for d in _detections.values():
-        if event_id and d.get("event_id") != event_id:
-            continue
-        if d.get("user_id") != user_id:
-            continue
-        results.append(d)
+    query = _col(DETECTIONS_COL).where("user_id", "==", user_id)
+    if event_id:
+        query = query.where("event_id", "==", event_id)
+    docs = query.stream()
+    results = [d.to_dict() for d in docs]
     return sorted(results, key=lambda x: x.get("detected_at", ""), reverse=True)
 
 
 def get_suspect(suspect_id: str) -> dict | None:
-    return _suspects.get(suspect_id)
+    doc = _col(SUSPECTS_COL).document(suspect_id).get()
+    return doc.to_dict() if doc.exists else None
 
 
 def get_radar_stats(user_id: str = "demo_user") -> dict:
-    """Dashboard stats for the radar."""
-    user_events = [e for e in _events.values() if e["user_id"] == user_id]
-    user_detections = [d for d in _detections.values() if d.get("user_id") == user_id]
+    events = list(_col(EVENTS_COL).where("user_id", "==", user_id).stream())
+    event_dicts = [e.to_dict() for e in events]
+    detections = list(_col(DETECTIONS_COL).where("user_id", "==", user_id).stream())
+    det_dicts = [d.to_dict() for d in detections]
 
     return {
-        "active_events": len([e for e in user_events if e["status"] == "monitoring"]),
-        "total_events": len(user_events),
-        "total_suspects_analyzed": sum(e.get("suspect_count", 0) for e in user_events),
-        "total_detections": len(user_detections),
-        "pirate_streams_found": len([d for d in user_detections if d.get("verdict") == "PIRATE_STREAM_DETECTED"]),
+        "active_events": len([e for e in event_dicts if e.get("status") == "monitoring"]),
+        "total_events": len(event_dicts),
+        "total_suspects_analyzed": sum(e.get("suspect_count", 0) for e in event_dicts),
+        "total_detections": len(det_dicts),
+        "pirate_streams_found": len([d for d in det_dicts if d.get("verdict") == "PIRATE_STREAM_DETECTED"]),
         "engine_status": "active",
         "capabilities": {
             "audio_fingerprint": True,
@@ -336,19 +318,19 @@ def get_radar_stats(user_id: str = "demo_user") -> dict:
 
 
 def stop_event(event_id: str) -> dict:
-    """Stop monitoring an event."""
-    event = _events.get(event_id)
+    event = get_event(event_id)
     if not event:
         return {"error": f"Event {event_id} not found"}
-    event["status"] = "stopped"
-    event["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _col(EVENTS_COL).document(event_id).update({
+        "status": "stopped",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    })
     return {"event_id": event_id, "status": "stopped"}
 
 
 # ── Internal helpers ────────────────────────────────────────────────────
 
 def _create_detection(event: dict, suspect_result: dict, source_url: str) -> dict:
-    """Create a confirmed pirate detection record."""
     detection_id = f"det_{uuid.uuid4().hex[:12]}"
 
     detection = {
@@ -369,15 +351,11 @@ def _create_detection(event: dict, suspect_result: dict, source_url: str) -> dic
         "detected_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    _detections[detection_id] = detection
+    _col(DETECTIONS_COL).document(detection_id).set(detection)
     return detection
 
 
 def _extract_frames(file_bytes: bytes, max_frames: int = 10) -> list[bytes]:
-    """
-    Extract key frames from a video file using PyAV.
-    Returns list of PNG-encoded frame bytes.
-    """
     try:
         import av
 
@@ -389,7 +367,6 @@ def _extract_frames(file_bytes: bytes, max_frames: int = 10) -> list[bytes]:
                 break
 
         if video_stream is None:
-            # Might be an image file — try to load directly
             try:
                 img = Image.open(io.BytesIO(file_bytes))
                 buf = io.BytesIO()
@@ -400,7 +377,6 @@ def _extract_frames(file_bytes: bytes, max_frames: int = 10) -> list[bytes]:
 
         frames = []
         total_frames = video_stream.frames or 100
-        # Sample evenly across the video
         interval = max(1, total_frames // max_frames)
 
         for i, frame in enumerate(container.decode(video=0)):
@@ -415,8 +391,7 @@ def _extract_frames(file_bytes: bytes, max_frames: int = 10) -> list[bytes]:
         container.close()
         return frames
 
-    except Exception as e:
-        # Try as static image
+    except Exception:
         try:
             img = Image.open(io.BytesIO(file_bytes))
             buf = io.BytesIO()
