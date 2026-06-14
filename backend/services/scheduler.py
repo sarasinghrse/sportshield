@@ -1,6 +1,5 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from services.firebase_client import db
-from routers.media import run_scan
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,6 +25,7 @@ def rescan_all_assets():
             db.collection("assets").document(doc.id).update({
                 "scanCount": (asset.get("scanCount") or 0) + 1
             })
+            from routers.media import run_scan
             run_scan(doc.id, user_id, phash, original_url)
             count += 1
         logger.info(f"Scheduler: rescan complete — {count} asset(s) rescanned")

@@ -1,18 +1,13 @@
 """
 SportShield AI Helper — powered by Google Gemini and LangGraph
+Heavy deps (langchain, langgraph) are lazy-loaded to keep startup memory low.
 """
 
 import os
 from fastapi import APIRouter
 from pydantic import BaseModel
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langgraph.prebuilt import create_react_agent
-from langchain_core.tools import tool
 
 router = APIRouter()
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 SYSTEM_PROMPT = """You are SportShield Assistant, a helpful AI navigator for the SportShield platform — a sports media protection tool built for the Google Solutions Challenge.
 
@@ -41,7 +36,7 @@ PAGES:
 - War Room (/radar) — live radar, enforcement, crowd network, public API docs
 - Settings (/settings) — account preferences
 
-You have tools to access Live Radar Statistics and trigger page navigation. 
+You have tools to access Live Radar Statistics and trigger page navigation.
 If a user explicitly asks to go to a page or you feel taking them to a page is the best way to help them, use the trigger_navigation tool.
 Keep answers concise (2-4 sentences). Be friendly and helpful. If asked about something unrelated to SportShield, gently redirect to how you can help with the platform. Never reveal API keys or internal implementation details.
 """
@@ -50,39 +45,50 @@ class ChatRequest(BaseModel):
     message: str
     history: list = []
 
-@tool
-def get_dashboard_stats() -> dict:
-    """Provides statistics about radar detections and monitored events. Use this when the user asks about live monitoring or stats."""
-    from services.radar_engine import get_radar_stats
-    return get_radar_stats("demo_user")
 
-@tool
-def trigger_navigation(page_name: str) -> str:
-    """Triggers navigation to a specific page on the frontend. Use this ONLY when the user explicitly asks to be taken to a page. Valid inputs: 'dashboard', 'war_room', 'community', 'settings'."""
-    return f"NAVIGATE_TO:{page_name}"
+_agent_cache = {}
 
-tools = [get_dashboard_stats, trigger_navigation]
+def _get_tools():
+    from langchain_core.tools import tool
 
-# Delay initialization of LLM until endpoint is called in case GEMINI_API_KEY is set after module load
+    @tool
+    def get_dashboard_stats() -> dict:
+        """Provides statistics about radar detections and monitored events. Use this when the user asks about live monitoring or stats."""
+        from services.radar_engine import get_radar_stats
+        return get_radar_stats("demo_user")
+
+    @tool
+    def trigger_navigation(page_name: str) -> str:
+        """Triggers navigation to a specific page on the frontend. Use this ONLY when the user explicitly asks to be taken to a page. Valid inputs: 'dashboard', 'war_room', 'community', 'settings'."""
+        return f"NAVIGATE_TO:{page_name}"
+
+    return [get_dashboard_stats, trigger_navigation]
+
+
 def get_agent():
     if not os.getenv("GEMINI_API_KEY"):
         return None
-    # 2.0-flash quota is 0, and 1.5 is deprecated or unavailable for this key, so we use gemini-2.5-flash
+    if "agent" in _agent_cache:
+        return _agent_cache["agent"]
+    from langchain_google_genai import ChatGoogleGenerativeAI
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY"))
-    
-    # Use bind_tools directly instead of create_react_agent to enforce exactly 1 LLM call per request
-    return llm.bind_tools(tools)
+    tools = _get_tools()
+    agent = llm.bind_tools(tools)
+    _agent_cache["agent"] = agent
+    _agent_cache["tools"] = tools
+    return agent
+
 
 @router.post("/chat")
 async def chat(req: ChatRequest):
     agent = get_agent()
-    
+
     if not agent:
         return {"reply": "AI assistant is not configured yet. Please set the GEMINI_API_KEY environment variable."}
 
+    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
     messages = [SystemMessage(content=SYSTEM_PROMPT)]
-    
-    # Pre-emptively append that the system is ready
     messages.append(AIMessage(content="Understood. I'm SportShield Assistant, ready to help users navigate the platform."))
 
     for msg in req.history[-10:]:
@@ -92,39 +98,37 @@ async def chat(req: ChatRequest):
             messages.append(AIMessage(content=text))
         else:
             messages.append(HumanMessage(content=text))
-            
+
     messages.append(HumanMessage(content=req.message))
 
     try:
         result = await agent.ainvoke(messages)
-        
+
         reply_text = result.content
         navigate_to = None
-        
-        # Check if any tools were invoked and manually execute them to prevent a second roundtrip to the LLM
+
         if result.tool_calls:
             for tc in result.tool_calls:
                 if tc["name"] == "trigger_navigation":
                     navigate_to = tc["args"].get("page_name")
                     reply_text = "Taking you there..."
                 elif tc["name"] == "get_dashboard_stats":
-                    # Execute tool manually and format string
                     from services.radar_engine import get_radar_stats
                     stats = get_radar_stats("demo_user")
                     reply_text = f"Here are your live stats: {stats.get('active_events', 0)} active events with {stats.get('total_suspects_analyzed', 0)} total suspects analyzed, and {stats.get('pirate_streams_found', 0)} pirate streams blocked."
 
         response_data = {"reply": reply_text if reply_text else "I couldn't process that command."}
-        
+
         page_map = {
             "dashboard": "/",
             "war_room": "/radar",
             "community": "/community",
             "settings": "/settings"
         }
-        
+
         if navigate_to and navigate_to in page_map:
             response_data["navigate_to"] = page_map[navigate_to]
-            
+
         return response_data
 
     except Exception as e:

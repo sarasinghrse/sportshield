@@ -4,7 +4,6 @@ Uses SerpAPI's google_reverse_image engine + Google Lens fallback.
 Confidence threshold lowered to 0.50 to catch more real matches.
 """
 import httpx
-from services.fingerprint import compute_phash, compare_hashes
 
 # Minimum pHash similarity to count as a match
 MATCH_THRESHOLD = 0.50
@@ -29,6 +28,7 @@ def _phash_compare_url(original_phash: str, img_url: str) -> float:
     if not img_url:
         return 0.0
     try:
+        from services.fingerprint import compute_phash, compare_hashes
         r = httpx.get(img_url, timeout=8, follow_redirects=True)
         found_phash = compute_phash(r.content)
         return compare_hashes(original_phash, found_phash)

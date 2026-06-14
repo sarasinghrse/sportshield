@@ -61,8 +61,13 @@ export default function AdminDashboard() {
   }
 
   async function markRead(id) {
-    await fetch(`${API_URL}/api/admin/messages/${id}/read`, { method: 'POST' });
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+    try {
+      const res = await fetch(`${API_URL}/api/admin/messages/${id}/read`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+    } catch (err) {
+      alert(`Failed to mark as read: ${err.message}`);
+    }
   }
 
   async function runHealthCheck() {
