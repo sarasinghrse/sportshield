@@ -206,3 +206,89 @@ export const DEMO_REPORT = {
   emailSent: true,
   emailSentAt: ts(0),
 };
+
+/* ── War Room / Live Radar demo data ── */
+
+export const DEMO_RADAR_STATS = {
+  active_events: 3,
+  total_suspects_analyzed: 47,
+  pirate_streams_found: 12,
+  total_detections: 18,
+};
+
+export const DEMO_RADAR_EVENTS = [
+  {
+    event_id: 'evt_demo_001',
+    event_name: 'India vs Australia — T20 World Cup Semi-Final',
+    teams: ['India', 'Australia'],
+    broadcaster: 'Star Sports',
+    league: 'ICC T20 World Cup 2026',
+    status: 'monitoring',
+    suspect_count: 14,
+    detection_count: 6,
+    created_at: ts(0),
+  },
+  {
+    event_id: 'evt_demo_002',
+    event_name: 'Arsenal vs Chelsea — Premier League GW34',
+    teams: ['Arsenal', 'Chelsea'],
+    broadcaster: 'Sky Sports',
+    league: 'Premier League',
+    status: 'monitoring',
+    suspect_count: 9,
+    detection_count: 3,
+    created_at: ts(1),
+  },
+  {
+    event_id: 'evt_demo_003',
+    event_name: 'Real Madrid vs Barcelona — La Liga Clásico',
+    teams: ['Real Madrid', 'Barcelona'],
+    broadcaster: 'DAZN',
+    league: 'La Liga',
+    status: 'completed',
+    suspect_count: 24,
+    detection_count: 9,
+    created_at: ts(3),
+  },
+];
+
+export const DEMO_DETECTIONS = [
+  { detection_id: 'det_001', event_name: 'India vs Australia — T20 World Cup Semi-Final', source_url: 'https://pirate-stream.live/cricket-free', composite_score: 0.94, confidence: 'HIGH', detected_at: ts(0) },
+  { detection_id: 'det_002', event_name: 'India vs Australia — T20 World Cup Semi-Final', source_url: 'https://free-sports.tv/ind-v-aus', composite_score: 0.87, confidence: 'HIGH', detected_at: ts(0) },
+  { detection_id: 'det_003', event_name: 'Arsenal vs Chelsea — Premier League GW34', source_url: 'https://soccer-streams.net/epl-live', composite_score: 0.91, confidence: 'HIGH', detected_at: ts(1) },
+  { detection_id: 'det_004', event_name: 'Real Madrid vs Barcelona — La Liga Clásico', source_url: 'https://futbol-gratis.io/clasico', composite_score: 0.78, confidence: 'MEDIUM', detected_at: ts(2) },
+  { detection_id: 'det_005', event_name: 'India vs Australia — T20 World Cup Semi-Final', source_url: 'https://stream247.cc/live-cricket', composite_score: 0.82, confidence: 'HIGH', detected_at: ts(0) },
+];
+
+export const DEMO_ENFORCEMENT_STATS = {
+  total_cases: 12,
+  active_cases: 5,
+  resolved_cases: 7,
+  under_30_min_rate: 72,
+};
+
+export const DEMO_CASES = [
+  { case_id: 'case_001', event_name: 'India vs Australia — T20 WC', platform: 'pirate-stream.live', source_url: 'https://pirate-stream.live/cricket-free', status: 'dmca_filed', escalation_level: 0 },
+  { case_id: 'case_002', event_name: 'Arsenal vs Chelsea — PL', platform: 'soccer-streams.net', source_url: 'https://soccer-streams.net/epl-live', status: 'dmca_generated', escalation_level: 0 },
+  { case_id: 'case_003', event_name: 'Real Madrid vs Barcelona', platform: 'futbol-gratis.io', source_url: 'https://futbol-gratis.io/clasico', status: 'escalated_isp', escalation_level: 2 },
+  { case_id: 'case_004', event_name: 'India vs Australia — T20 WC', platform: 'free-sports.tv', source_url: 'https://free-sports.tv/ind-v-aus', status: 'resolved_content_removed', escalation_level: 0 },
+  { case_id: 'case_005', event_name: 'India vs Australia — T20 WC', platform: 'stream247.cc', source_url: 'https://stream247.cc/live-cricket', status: 'dmca_filed', escalation_level: 1 },
+];
+
+export const DEMO_CROWD_STATS = {
+  total_contributors: 156,
+  total_submissions: 342,
+  verified_pirates: 89,
+  verification_rate: 26,
+};
+
+export const DEMO_LEADERBOARD = [
+  { user_id: 'u1', display_name: 'PiracyHunter_IN', rank: 'legend', total_points: 4820, verified_finds: 47 },
+  { user_id: 'u2', display_name: 'StreamWatch_UK', rank: 'expert', total_points: 3150, verified_finds: 31 },
+  { user_id: 'u3', display_name: 'SportGuard', rank: 'expert', total_points: 2740, verified_finds: 26 },
+  { user_id: 'u4', display_name: 'CricketShield', rank: 'veteran', total_points: 1890, verified_finds: 18 },
+  { user_id: 'u5', display_name: 'FootballPatrol', rank: 'veteran', total_points: 1420, verified_finds: 14 },
+  { user_id: 'u6', display_name: 'AntiPirate_SA', rank: 'hunter', total_points: 960, verified_finds: 9 },
+  { user_id: 'u7', display_name: 'StreamDetective', rank: 'hunter', total_points: 710, verified_finds: 7 },
+  { user_id: 'u8', display_name: 'MediaWatch', rank: 'scout', total_points: 340, verified_finds: 3 },
+];
