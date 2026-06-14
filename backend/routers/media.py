@@ -2,38 +2,38 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from services.firebase_client import db
-from services.cloudinary_client import upload_file
-from services.fingerprint import compute_phash
-from services.pdq_hasher import compute_pdq, compare_pdq
-from services.clip_search import index_asset as clip_index, search_similar as clip_search, text_search as clip_text_search, get_collection_stats as clip_stats
-from services.forensic_watermark import embed_forensic_watermark, extract_forensic_watermark
-from services.c2pa_credentials import sign_asset as c2pa_sign, verify_asset as c2pa_verify, get_credential_summary
-from services.crawler import scan_asset, scrape_social_image
-from services.ai_detector import detect_ai_image
-from services.watermark import apply_visible_watermark
-from services.risk_score import compute_risk_score
-from services.domain_classifier import get_trusted_domains, classify_url
-from services.propagation_tracker import build_propagation_data, extract_domain, categorize_platform
-from services.deepfake_detector import detect_deepfake
-from services.video_fingerprint import compute_video_fingerprint, compare_video_to_assets, extract_frames
-from services.invisible_watermark import embed_watermark, extract_watermark
-from services.music_detector import detect_music_from_bytes
+from config import SERPAPI_KEY, HF_TOKEN
+import uuid
+import threading
+import httpx
+import importlib
+from datetime import datetime, timezone
+
+
+# ── Lazy imports to keep memory under 512MB on Render free tier ──────────
+# Heavy services (PIL, numpy, qdrant, av, opencv, langchain) are only
+# loaded when their endpoints are actually called, not at startup.
+_import_cache = {}
+
+def _get(module_path, attr_name):
+    """Lazily import and cache a single attribute from a module."""
+    key = f"{module_path}.{attr_name}"
+    if key not in _import_cache:
+        mod = importlib.import_module(module_path)
+        _import_cache[key] = getattr(mod, attr_name)
+    return _import_cache[key]
+
+
+# Lightweight services — safe to import eagerly (only use httpx/Firestore)
 from services.dmca_generator import generate_dmca_notice, generate_batch_notices, get_platform_info
-from services.blockchain_timestamp import create_ownership_proof, verify_ownership_proof, generate_proof_certificate
-from services.scheduled_scanner import schedule_asset_rescan, unschedule_asset_rescan, get_scheduled_jobs, start_scheduler
-from services.licensing import create_license, check_license_status, verify_usage, LICENSE_TYPES
+from services.domain_classifier import get_trusted_domains, classify_url
+from services.risk_score import compute_risk_score
+from services.propagation_tracker import build_propagation_data, extract_domain, categorize_platform
 from services.email_alerts import send_scan_alert, send_dmca_confirmation
-from services.radar_engine import (
-    create_event as radar_create_event,
-    get_event as radar_get_event,
-    list_events as radar_list_events,
-    ingest_reference as radar_ingest_reference,
-    analyze_suspect as radar_analyze_suspect,
-    get_detections as radar_get_detections,
-    get_suspect as radar_get_suspect,
-    get_radar_stats,
-    stop_event as radar_stop_event,
-)
+from services.licensing import create_license, check_license_status, verify_usage, LICENSE_TYPES
+from services.ai_detector import detect_ai_image
+from services.deepfake_detector import detect_deepfake
+from services.crawler import scan_asset, scrape_social_image
 from services.enforcement_agent import (
     create_enforcement_case,
     file_dmca as enforcement_file_dmca,
@@ -44,7 +44,6 @@ from services.enforcement_agent import (
     get_enforcement_stats,
     get_cases_needing_escalation,
 )
-from services.evidence_pack import generate_evidence_pack
 from services.crowd_network import (
     submit_pirate_report,
     verify_submission,
@@ -57,13 +56,33 @@ from services.crowd_network import (
     get_network_stats,
 )
 from services.piracy_scanner import scan_event_for_pirates
-from config import SERPAPI_KEY, HF_TOKEN
-import uuid
-import threading
-import httpx
-from datetime import datetime, timezone
 
-start_scheduler()
+
+# Heavy services — loaded lazily via _get() at call sites:
+#   services.cloudinary_client  -> upload_file
+#   services.fingerprint        -> compute_phash
+#   services.pdq_hasher         -> compute_pdq, compare_pdq
+#   services.clip_search        -> index_asset, search_similar, text_search, get_collection_stats
+#   services.forensic_watermark -> embed_forensic_watermark, extract_forensic_watermark
+#   services.c2pa_credentials   -> sign_asset, verify_asset, get_credential_summary
+#   services.watermark          -> apply_visible_watermark
+#   services.invisible_watermark-> embed_watermark, extract_watermark
+#   services.video_fingerprint  -> compute_video_fingerprint, compare_video_to_assets, extract_frames
+#   services.music_detector     -> detect_music_from_bytes
+#   services.blockchain_timestamp -> create_ownership_proof, verify_ownership_proof, generate_proof_certificate
+#   services.radar_engine       -> create_event, get_event, list_events, etc.
+#   services.evidence_pack      -> generate_evidence_pack
+#   services.scheduled_scanner  -> schedule_asset_rescan, etc.
+
+
+def _start_scheduler():
+    try:
+        from services.scheduled_scanner import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"[scheduler] Skipped: {e}")
+
+_start_scheduler()
 
 router = APIRouter()
 
@@ -184,7 +203,7 @@ def run_video_scan(asset_id, user_id, video_fp, original_url):
             if a.get("phash"):
                 image_assets.append(a)
 
-        matches = compare_video_to_assets(video_fp, image_assets, threshold=0.50)
+        matches = _get('services.video_fingerprint', 'compare_video_to_assets')(video_fp, image_assets, threshold=0.50)
 
         scan_time = datetime.now(timezone.utc)
         trusted = get_trusted_domains(user_id)
@@ -243,7 +262,7 @@ async def upload_media(file: UploadFile = File(...)):
     user_id  = "demo_user"
 
     cloudinary_type = "video" if resource_type in ("video", "audio") else "image"
-    original_url = upload_file(file_bytes, asset_id, user_id, cloudinary_type)
+    original_url = _get('services.cloudinary_client', 'upload_file')(file_bytes, asset_id, user_id, cloudinary_type)
 
     phash = ""
     pdq_data = None
@@ -259,24 +278,24 @@ async def upload_media(file: UploadFile = File(...)):
     # S13: Music detection for audio and video files
     if resource_type in ("audio", "video"):
         try:
-            music_analysis = detect_music_from_bytes(file_bytes, file.filename or "")
+            music_analysis = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, file.filename or "")
             print(f"[music] Detection: {music_analysis.get('summary', 'N/A')}")
         except Exception as e:
             print(f"[music] Detection failed: {e}")
 
     if resource_type == "image":
-        phash = compute_phash(file_bytes)
+        phash = _get('services.fingerprint', 'compute_phash')(file_bytes)
 
         # ── Phase 1: Meta PDQ hash (production-grade, replaces pHash as primary) ──
         try:
-            pdq_data = compute_pdq(file_bytes)
+            pdq_data = _get('services.pdq_hasher', 'compute_pdq')(file_bytes)
             print(f"[pdq] Hash: {pdq_data['hash'][:16]}... quality={pdq_data['quality']}")
         except Exception as e:
             print(f"[pdq] Failed: {e}")
 
         # ── Phase 1: CLIP vector indexing (semantic search) ──
         try:
-            clip_data = clip_index(asset_id, user_id, file_bytes, file.filename or "")
+            clip_data = _get('services.clip_search', 'index_asset')(asset_id, user_id, file_bytes, file.filename or "")
             if clip_data.get("indexed"):
                 print(f"[clip] Indexed {clip_data['dimensions']}-dim vector")
         except Exception as e:
@@ -284,32 +303,32 @@ async def upload_media(file: UploadFile = File(...)):
 
         # Visible watermark (existing S2)
         try:
-            wm_bytes = apply_visible_watermark(
+            wm_bytes = _get('services.watermark', 'apply_visible_watermark')(
                 file_bytes,
                 user_email=f"{user_id}@sportshield",
                 session_id=asset_id,
                 asset_id=asset_id,
             )
-            watermarked_url = upload_file(wm_bytes, f"{asset_id}_wm", user_id, "image")
+            watermarked_url = _get('services.cloudinary_client', 'upload_file')(wm_bytes, f"{asset_id}_wm", user_id, "image")
         except Exception as e:
             print(f"[watermark] could not generate watermarked copy: {e}")
 
         # S5: Invisible watermark (LSB steganography — kept as fallback)
         try:
-            inv_bytes = embed_watermark(file_bytes, user_id=user_id, asset_id=asset_id)
-            invisible_wm_url = upload_file(inv_bytes, f"{asset_id}_inv", user_id, "image")
+            inv_bytes = _get('services.invisible_watermark', 'embed_watermark')(file_bytes, user_id=user_id, asset_id=asset_id)
+            invisible_wm_url = _get('services.cloudinary_client', 'upload_file')(inv_bytes, f"{asset_id}_inv", user_id, "image")
             print(f"[invisible_wm] LSB embedded for asset {asset_id[:8]}")
         except Exception as e:
             print(f"[invisible_wm] Failed: {e}")
 
         # ── Phase 1: DCT forensic watermark (survives re-compression/screenshots) ──
         try:
-            fw_result = embed_forensic_watermark(
+            fw_result = _get('services.forensic_watermark', 'embed_forensic_watermark')(
                 file_bytes, user_id=user_id, asset_id=asset_id,
                 session_id=asset_id,
             )
             fw_bytes = fw_result.pop("watermarked_bytes")
-            forensic_wm_url = upload_file(fw_bytes, f"{asset_id}_fwm", user_id, "image")
+            forensic_wm_url = _get('services.cloudinary_client', 'upload_file')(fw_bytes, f"{asset_id}_fwm", user_id, "image")
             forensic_wm_meta = fw_result
             print(f"[forensic_wm] DCT embedded: {fw_result['bits_embedded']} bits, session={fw_result['session_id'][:8]}")
         except Exception as e:
@@ -317,7 +336,7 @@ async def upload_media(file: UploadFile = File(...)):
 
     elif resource_type == "video":
         try:
-            video_fingerprint = compute_video_fingerprint(file_bytes, max_frames=12)
+            video_fingerprint = _get('services.video_fingerprint', 'compute_video_fingerprint')(file_bytes, max_frames=12)
             phash = video_fingerprint.get("primaryHash", "")
             print(f"[video] Extracted {video_fingerprint['frameCount']} frames, primary hash: {phash}")
         except Exception as e:
@@ -326,13 +345,13 @@ async def upload_media(file: UploadFile = File(...)):
     # ── Phase 1: C2PA Content Credential signing ──
     if resource_type == "image":
         try:
-            c2pa_result = c2pa_sign(
+            c2pa_result = _get('services.c2pa_credentials', 'sign_asset')(
                 file_bytes, user_id, asset_id,
                 file.filename or "", file.content_type or "image/png",
             )
             if c2pa_result.get("signed"):
                 c2pa_signed_bytes = c2pa_result.pop("manifest_bytes")
-                c2pa_url = upload_file(c2pa_signed_bytes, f"{asset_id}_c2pa", user_id, "image")
+                c2pa_url = _get('services.cloudinary_client', 'upload_file')(c2pa_signed_bytes, f"{asset_id}_c2pa", user_id, "image")
                 c2pa_data = {
                     "signed": True,
                     "c2paUrl": c2pa_url,
@@ -377,7 +396,7 @@ async def upload_media(file: UploadFile = File(...)):
 
     # S11: Create ownership proof on upload (legacy — now supplemented by C2PA)
     try:
-        proof = create_ownership_proof(file_bytes, asset_id, user_id, file.filename or "", phash)
+        proof = _get('services.blockchain_timestamp', 'create_ownership_proof')(file_bytes, asset_id, user_id, file.filename or "", phash)
         asset_doc["ownershipProof"] = proof
     except Exception as e:
         print(f"[proof] Failed: {e}")
@@ -436,8 +455,8 @@ async def scan_social_url(req: SocialScanRequest):
     filename  = req.label or f"social_{asset_id[:8]}"
 
     # Upload extracted image to Cloudinary
-    original_url = upload_file(image_bytes, asset_id, user_id, "image")
-    phash        = compute_phash(image_bytes)
+    original_url = _get('services.cloudinary_client', 'upload_file')(image_bytes, asset_id, user_id, "image")
+    phash        = _get('services.fingerprint', 'compute_phash')(image_bytes)
 
     db.collection("assets").document(asset_id).set({
         "userId":      user_id,
@@ -516,7 +535,7 @@ async def get_watermarked(
         raise HTTPException(status_code=502, detail=f"Could not fetch original image: {e}")
 
     # Apply watermark with caller-supplied identity
-    watermarked = apply_visible_watermark(
+    watermarked = _get('services.watermark', 'apply_visible_watermark')(
         image_bytes,
         user_email=email or asset.get("userId", "unknown"),
         session_id=session or asset_id,
@@ -661,7 +680,7 @@ async def compare_video(asset_id: str):
         if d.id != asset_id and a.get("phash"):
             others.append(a)
 
-    matches = compare_video_to_assets(vf, others)
+    matches = _get('services.video_fingerprint', 'compare_video_to_assets')(vf, others)
     return {"assetId": asset_id, "matches": matches, "comparedAgainst": len(others)}
 
 
@@ -693,8 +712,8 @@ async def apply_invisible_wm(asset_id: str):
         raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
 
     user_id = asset.get("userId", "demo_user")
-    inv_bytes = embed_watermark(image_bytes, user_id=user_id, asset_id=asset_id)
-    inv_url = upload_file(inv_bytes, f"{asset_id}_inv", user_id, "image")
+    inv_bytes = _get('services.invisible_watermark', 'embed_watermark')(image_bytes, user_id=user_id, asset_id=asset_id)
+    inv_url = _get('services.cloudinary_client', 'upload_file')(inv_bytes, f"{asset_id}_inv", user_id, "image")
 
     db.collection("assets").document(asset_id).update({"invisibleWmUrl": inv_url})
 
@@ -713,7 +732,7 @@ async def extract_hidden_watermark(file: UploadFile = File(...)):
     Returns the embedded payload (user ID, asset ID, timestamp) if found.
     """
     file_bytes = await file.read()
-    result = extract_watermark(file_bytes)
+    result = _get('services.invisible_watermark', 'extract_watermark')(file_bytes)
     return result
 
 
@@ -737,7 +756,7 @@ async def extract_watermark_from_asset(asset_id: str):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not fetch watermarked image: {e}")
 
-    result = extract_watermark(resp.content)
+    result = _get('services.invisible_watermark', 'extract_watermark')(resp.content)
     return result
 
 
@@ -769,7 +788,7 @@ async def detect_music_in_asset(asset_id: str):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not fetch file: {e}")
 
-    result = detect_music_from_bytes(file_bytes, asset.get("filename", ""))
+    result = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, asset.get("filename", ""))
 
     db.collection("assets").document(asset_id).update({"musicAnalysis": result})
 
@@ -783,7 +802,7 @@ async def detect_music_upload(file: UploadFile = File(...)):
     Supports audio and video files.
     """
     file_bytes = await file.read()
-    result = detect_music_from_bytes(file_bytes, file.filename or "")
+    result = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, file.filename or "")
     return result
 
 
@@ -944,7 +963,7 @@ async def create_proof(asset_id: str):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not fetch file: {e}")
 
-    proof = create_ownership_proof(
+    proof = _get('services.blockchain_timestamp', 'create_ownership_proof')(
         resp.content, asset_id, asset.get("userId", "demo_user"),
         asset.get("filename", ""), asset.get("phash", ""),
     )
@@ -961,7 +980,7 @@ async def get_proof_certificate(asset_id: str):
     proof = doc.to_dict().get("ownershipProof")
     if not proof:
         raise HTTPException(status_code=404, detail="No proof exists")
-    cert = generate_proof_certificate(proof)
+    cert = _get('services.blockchain_timestamp', 'generate_proof_certificate')(proof)
     return Response(
         content=cert,
         media_type="text/plain",
@@ -979,7 +998,7 @@ async def verify_proof(asset_id: str, file: UploadFile = File(...)):
     if not proof:
         raise HTTPException(status_code=404, detail="No proof exists for this asset")
     file_bytes = await file.read()
-    result = verify_ownership_proof(proof, file_bytes)
+    result = _get('services.blockchain_timestamp', 'verify_ownership_proof')(proof, file_bytes)
     return result
 
 
@@ -998,7 +1017,7 @@ async def schedule_scan(asset_id: str, req: ScheduleRequest = ScheduleRequest())
     asset = doc.to_dict()
     user_id = asset.get("userId", "demo_user")
 
-    result = schedule_asset_rescan(asset_id, user_id, req.intervalHours)
+    result = _get('services.scheduled_scanner', 'schedule_asset_rescan')(asset_id, user_id, req.intervalHours)
 
     db.collection("assets").document(asset_id).update({
         "monitoringEnabled": True,
@@ -1011,7 +1030,7 @@ async def schedule_scan(asset_id: str, req: ScheduleRequest = ScheduleRequest())
 @router.delete("/schedule/{asset_id}")
 async def unschedule_scan(asset_id: str):
     """Stop scheduled re-scans for an asset."""
-    result = unschedule_asset_rescan(asset_id)
+    result = _get('services.scheduled_scanner', 'unschedule_asset_rescan')(asset_id)
     try:
         db.collection("assets").document(asset_id).update({
             "monitoringEnabled": False,
@@ -1024,7 +1043,7 @@ async def unschedule_scan(asset_id: str):
 @router.get("/schedules")
 async def list_schedules():
     """List all scheduled scan jobs."""
-    return {"jobs": get_scheduled_jobs()}
+    return {"jobs": _get('services.scheduled_scanner', 'get_scheduled_jobs')()}
 
 
 @router.post("/rescan/{asset_id}")
@@ -1228,11 +1247,11 @@ async def compare_pdq_hashes(asset_id: str, file: UploadFile = File(...)):
 
     file_bytes = await file.read()
     try:
-        uploaded_pdq = compute_pdq(file_bytes)
+        uploaded_pdq = _get('services.pdq_hasher', 'compute_pdq')(file_bytes)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not hash uploaded image: {e}")
 
-    result = compare_pdq(pdq["hash"], uploaded_pdq["hash"])
+    result = _get('services.pdq_hasher', 'compare_pdq')(pdq["hash"], uploaded_pdq["hash"])
     result["asset_hash"] = pdq["hash"]
     result["uploaded_hash"] = uploaded_pdq["hash"]
     return result
@@ -1248,7 +1267,7 @@ async def search_by_image(file: UploadFile = File(...), top_k: int = Query(10)):
     memes, AI-upscaled copies that pHash/PDQ miss).
     """
     file_bytes = await file.read()
-    results = clip_search(file_bytes, user_id="demo_user", top_k=top_k)
+    results = _get('services.clip_search', 'search_similar')(file_bytes, user_id="demo_user", top_k=top_k)
     return {"matches": results, "count": len(results), "engine": "CLIP+Qdrant"}
 
 
@@ -1263,14 +1282,14 @@ async def search_by_text(req: TextSearchRequest):
     Text-to-image search using CLIP's multimodal capability.
     E.g. "player celebrating goal" → finds matching images.
     """
-    results = clip_text_search(req.query, user_id="demo_user", top_k=req.top_k)
+    results = _get('services.clip_search', 'text_search')(req.query, user_id="demo_user", top_k=req.top_k)
     return {"query": req.query, "matches": results, "count": len(results)}
 
 
 @router.get("/clip-stats")
 async def get_clip_stats():
     """Get CLIP vector index statistics."""
-    return clip_stats()
+    return _get('services.clip_search', 'get_collection_stats')()
 
 
 # ── Forensic Watermark (DCT/DWT) ────────────────────────────────────────
@@ -1301,9 +1320,9 @@ async def apply_forensic_wm(asset_id: str):
         raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
 
     user_id = asset.get("userId", "demo_user")
-    fw_result = embed_forensic_watermark(image_bytes, user_id=user_id, asset_id=asset_id, session_id=asset_id)
+    fw_result = _get('services.forensic_watermark', 'embed_forensic_watermark')(image_bytes, user_id=user_id, asset_id=asset_id, session_id=asset_id)
     fw_bytes = fw_result.pop("watermarked_bytes")
-    fw_url = upload_file(fw_bytes, f"{asset_id}_fwm", user_id, "image")
+    fw_url = _get('services.cloudinary_client', 'upload_file')(fw_bytes, f"{asset_id}_fwm", user_id, "image")
 
     db.collection("assets").document(asset_id).update({
         "forensicWmUrl": fw_url,
@@ -1328,7 +1347,7 @@ async def extract_forensic_wm(file: UploadFile = File(...), expected_bits: int =
     Pass expected_bits (from asset metadata) for best accuracy.
     """
     file_bytes = await file.read()
-    result = extract_forensic_watermark(file_bytes, expected_bits=expected_bits)
+    result = _get('services.forensic_watermark', 'extract_forensic_watermark')(file_bytes, expected_bits=expected_bits)
     return result
 
 
@@ -1353,7 +1372,7 @@ async def extract_forensic_wm_from_asset(asset_id: str):
         raise HTTPException(status_code=502, detail=f"Could not fetch watermarked image: {e}")
 
     expected_bits = asset.get("forensicWatermark", {}).get("bits_embedded", 0)
-    result = extract_forensic_watermark(resp.content, expected_bits=expected_bits)
+    result = _get('services.forensic_watermark', 'extract_forensic_watermark')(resp.content, expected_bits=expected_bits)
     return result
 
 
@@ -1398,13 +1417,13 @@ async def sign_with_c2pa(asset_id: str):
         raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
 
     user_id = asset.get("userId", "demo_user")
-    result = c2pa_sign(image_bytes, user_id, asset_id, asset.get("filename", ""), "image/png")
+    result = _get('services.c2pa_credentials', 'sign_asset')(image_bytes, user_id, asset_id, asset.get("filename", ""), "image/png")
 
     if not result.get("signed"):
         raise HTTPException(status_code=500, detail=f"C2PA signing failed: {result.get('error')}")
 
     signed_bytes = result.pop("manifest_bytes")
-    c2pa_url = upload_file(signed_bytes, f"{asset_id}_c2pa", user_id, "image")
+    c2pa_url = _get('services.cloudinary_client', 'upload_file')(signed_bytes, f"{asset_id}_c2pa", user_id, "image")
 
     c2pa_data = {
         "signed": True,
@@ -1430,8 +1449,8 @@ async def verify_c2pa(file: UploadFile = File(...)):
     Anyone can verify — this is the open standard used by 6,000+ organizations.
     """
     file_bytes = await file.read()
-    result = c2pa_verify(file_bytes, file.filename or "image.png")
-    summary = get_credential_summary(result)
+    result = _get('services.c2pa_credentials', 'verify_asset')(file_bytes, file.filename or "image.png")
+    summary = _get('services.c2pa_credentials', 'get_credential_summary')(result)
     return {**result, "summary": summary}
 
 
@@ -1452,8 +1471,8 @@ async def verify_c2pa_asset(asset_id: str):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not fetch C2PA signed file: {e}")
 
-    result = c2pa_verify(resp.content, asset.get("filename", "image.png"))
-    summary = get_credential_summary(result)
+    result = _get('services.c2pa_credentials', 'verify_asset')(resp.content, asset.get("filename", "image.png"))
+    summary = _get('services.c2pa_credentials', 'get_credential_summary')(result)
     return {**result, "summary": summary}
 
 
@@ -1522,7 +1541,7 @@ async def create_radar_event(req: CreateEventRequest, user_id: str = "demo_user"
     Create a monitored sports event.
     This is the anchor — submit reference clips and suspect streams against it.
     """
-    event = radar_create_event(
+    event = _get('services.radar_engine', 'create_event')(
         event_name=req.eventName,
         teams=req.teams,
         broadcaster=req.broadcaster,
@@ -1547,14 +1566,14 @@ async def scan_for_pirates(event_id: str, user_id: str = "demo_user"):
 @router.get("/radar/events")
 async def list_radar_events(user_id: str = "demo_user"):
     """List all monitored events for the user."""
-    events = radar_list_events(user_id)
+    events = _get('services.radar_engine', 'list_events')(user_id)
     return {"events": events, "count": len(events)}
 
 
 @router.get("/radar/events/{event_id}")
 async def get_radar_event(event_id: str):
     """Get details of a specific monitored event."""
-    event = radar_get_event(event_id)
+    event = _get('services.radar_engine', 'get_event')(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     # Strip large fields for API response
@@ -1567,7 +1586,7 @@ async def get_radar_event(event_id: str):
 @router.post("/radar/events/{event_id}/stop")
 async def stop_radar_event(event_id: str):
     """Stop monitoring an event."""
-    result = radar_stop_event(event_id)
+    result = _get('services.radar_engine', 'stop_event')(event_id)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -1582,7 +1601,7 @@ async def ingest_reference_clip(event_id: str, file: UploadFile = File(...)):
     Extracts audio fingerprint + visual frame hashes as the matching baseline.
     """
     file_bytes = await file.read()
-    result = radar_ingest_reference(event_id, file_bytes, file.filename or "")
+    result = _get('services.radar_engine', 'ingest_reference')(event_id, file_bytes, file.filename or "")
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -1610,7 +1629,7 @@ async def submit_suspect_stream(
       4. Composite scoring → piracy verdict
     """
     file_bytes = await file.read()
-    result = radar_analyze_suspect(
+    result = _get('services.radar_engine', 'analyze_suspect')(
         event_id=event_id,
         file_bytes=file_bytes,
         source_url=source_url,
@@ -1624,7 +1643,7 @@ async def submit_suspect_stream(
 @router.get("/radar/suspects/{suspect_id}")
 async def get_suspect_analysis(suspect_id: str):
     """Get full analysis result for a specific suspect."""
-    result = radar_get_suspect(suspect_id)
+    result = _get('services.radar_engine', 'get_suspect')(suspect_id)
     if not result:
         raise HTTPException(status_code=404, detail="Suspect not found")
     return result
@@ -1635,7 +1654,7 @@ async def get_suspect_analysis(suspect_id: str):
 @router.get("/radar/detections")
 async def list_detections(event_id: str = Query(None), user_id: str = "demo_user"):
     """List all confirmed pirate stream detections."""
-    detections = radar_get_detections(event_id=event_id, user_id=user_id)
+    detections = _get('services.radar_engine', 'get_detections')(event_id=event_id, user_id=user_id)
     return {"detections": detections, "count": len(detections)}
 
 
@@ -1648,7 +1667,7 @@ async def get_radar_dashboard_stats(user_id: str = "demo_user"):
     Shows active events, total suspects analyzed, pirate streams found,
     and which detection capabilities are available.
     """
-    return get_radar_stats(user_id)
+    return _get('services.radar_engine', 'get_radar_stats')(user_id)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1662,7 +1681,7 @@ async def create_case(detection_id: str = Query(...), user_id: str = "demo_user"
     Create an enforcement case from a pirate detection.
     Auto-gathers evidence and generates platform-specific DMCA.
     """
-    detections = radar_get_detections(user_id=user_id)
+    detections = _get('services.radar_engine', 'get_detections')(user_id=user_id)
     detection = next((d for d in detections if d.get("detection_id") == detection_id), None)
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
@@ -1748,7 +1767,7 @@ async def get_evidence_pack(case_id: str):
     case = get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    pack = generate_evidence_pack(case)
+    pack = _get('services.evidence_pack', 'generate_evidence_pack')(case)
     return pack
 
 
@@ -1758,7 +1777,7 @@ async def download_evidence_pack(case_id: str):
     case = get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    pack = generate_evidence_pack(case)
+    pack = _get('services.evidence_pack', 'generate_evidence_pack')(case)
     return Response(
         content=pack["report_text"],
         media_type="text/plain",
