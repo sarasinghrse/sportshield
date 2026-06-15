@@ -13,6 +13,16 @@ def detect_ai_image(image_bytes: bytes, hf_token: str) -> dict:
     Returns {is_ai: bool, confidence: float, label: str}
     Falls back gracefully if API is unavailable or token is missing.
     """
+    # Optional Cloud Vision backend (AI_DETECTOR_BACKEND=vision). Falls back to
+    # HuggingFace if Vision errors.
+    from config import AI_DETECTOR_BACKEND
+    if AI_DETECTOR_BACKEND == "vision":
+        from services.vision_detector import detect_ai_image as vision_detect
+        result = vision_detect(image_bytes)
+        if not result.get("error"):
+            return result
+        print(f"[ai_detector] Vision failed, falling back to HuggingFace: {result.get('error')}")
+
     if not hf_token:
         return {"is_ai": False, "confidence": 0.0, "label": "unknown", "error": "No HF_TOKEN set"}
 
