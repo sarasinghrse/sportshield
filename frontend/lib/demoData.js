@@ -302,14 +302,102 @@ export const DEMO_RADAR_EVENTS = [
 ];
 
 export const DEMO_DETECTIONS = [
-  { detection_id: 'det_001', event_name: 'Manchester City vs Liverpool — Premier League GW37', source_url: 'https://totalsportek.com/manchester-city-vs-liverpool-live/', composite_score: 0.97, confidence: 'HIGH', detected_at: ts(0) },
-  { detection_id: 'det_002', event_name: 'Manchester City vs Liverpool — Premier League GW37', source_url: 'https://sportsurge.io/epl-mci-liv-stream', composite_score: 0.94, confidence: 'HIGH', detected_at: ts(0) },
-  { detection_id: 'det_003', event_name: 'Real Madrid vs Bayern Munich — UCL Semi-Final Leg 2', source_url: 'https://buffstreams.tv/ucl-real-bayern-live', composite_score: 0.91, confidence: 'HIGH', detected_at: ts(0.5) },
-  { detection_id: 'det_004', event_name: 'India vs England — ICC Champions Trophy Final', source_url: 'https://webcric.me/india-vs-england-live-free', composite_score: 0.93, confidence: 'HIGH', detected_at: ts(1) },
-  { detection_id: 'det_005', event_name: 'India vs England — ICC Champions Trophy Final', source_url: 'https://smartcric.live/champions-trophy-final', composite_score: 0.88, confidence: 'HIGH', detected_at: ts(1) },
-  { detection_id: 'det_006', event_name: 'Manchester City vs Liverpool — Premier League GW37', source_url: 'https://footybite.cc/city-liverpool-free-hd', composite_score: 0.72, confidence: 'MEDIUM', detected_at: ts(0) },
-  { detection_id: 'det_007', event_name: 'LA Lakers vs Boston Celtics — NBA Finals Game 5', source_url: 'https://nbastreams.to/lakers-celtics-game5', composite_score: 0.86, confidence: 'HIGH', detected_at: ts(3) },
-  { detection_id: 'det_008', event_name: 'Real Madrid vs Bayern Munich — UCL Semi-Final Leg 2', source_url: 'https://hesgoal.tv/champions-league-live', composite_score: 0.68, confidence: 'MEDIUM', detected_at: ts(0.5) },
+  {
+    detection_id: 'det_001', event_name: 'Manchester City vs Liverpool — Premier League GW37',
+    source_url: 'https://totalsportek.com/manchester-city-vs-liverpool-live/',
+    composite_score: 0.97, confidence: 'HIGH', detected_at: ts(0),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.95, stream_embed_score: 0.94, keyword_match_score: 0.96, ad_popup_score: 0.82,
+      signals_detected: ['iframe src=player.m3u8', 'team name in <title>', 'popup ad overlay', 'known pirate domain', 'HLS stream manifest'],
+      reasoning: 'Known pirate aggregator serving embedded HLS stream of the match. Page title contains exact team names and "live stream free". Multiple popup ad layers detected.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_002', event_name: 'Manchester City vs Liverpool — Premier League GW37',
+    source_url: 'https://sportsurge.io/epl-mci-liv-stream',
+    composite_score: 0.94, confidence: 'HIGH', detected_at: ts(0),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.95, stream_embed_score: 0.91, keyword_match_score: 0.89, ad_popup_score: 0.70,
+      signals_detected: ['iframe src=embed.player', 'team name in URL path', 'known pirate domain', 'external player embed'],
+      reasoning: 'Repeat-offender piracy aggregator with embedded third-party player. URL path contains team abbreviations matching the event. Previously DMCA-flagged domain.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_003', event_name: 'Real Madrid vs Bayern Munich — UCL Semi-Final Leg 2',
+    source_url: 'https://buffstreams.tv/ucl-real-bayern-live',
+    composite_score: 0.91, confidence: 'HIGH', detected_at: ts(0.5),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.95, stream_embed_score: 0.87, keyword_match_score: 0.85, ad_popup_score: 0.78,
+      signals_detected: ['HLS m3u8 playlist', 'event name in heading', 'casino ad overlay', 'known pirate domain'],
+      reasoning: 'Multi-sport piracy platform with active HLS stream. Page heading matches "Real Madrid vs Bayern Munich LIVE". Casino and betting ad overlays present.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_004', event_name: 'India vs England — ICC Champions Trophy Final',
+    source_url: 'https://webcric.me/india-vs-england-live-free',
+    composite_score: 0.93, confidence: 'HIGH', detected_at: ts(1),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.90, stream_embed_score: 0.92, keyword_match_score: 0.94, ad_popup_score: 0.85,
+      signals_detected: ['iframe src=livecdn.stream', 'team names in title', 'popup blocker bypass', 'suspicious TLD .me', 'ad injection script'],
+      reasoning: 'Cricket-specific piracy site with embedded CDN stream player. Title contains "India vs England Live Free Streaming". Aggressive ad injection and popup blocker bypass scripts detected.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_005', event_name: 'India vs England — ICC Champions Trophy Final',
+    source_url: 'https://smartcric.live/champions-trophy-final',
+    composite_score: 0.88, confidence: 'HIGH', detected_at: ts(1),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.85, stream_embed_score: 0.86, keyword_match_score: 0.90, ad_popup_score: 0.65,
+      signals_detected: ['embedded video player', 'event name in URL', 'Star Sports logo removed', 'suspicious TLD .live'],
+      reasoning: 'Known cricket piracy site restreaming Star Sports broadcast with branding removed. Event name in URL path. Moderate ad presence compared to similar sites.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_006', event_name: 'Manchester City vs Liverpool — Premier League GW37',
+    source_url: 'https://footybite.cc/city-liverpool-free-hd',
+    composite_score: 0.72, confidence: 'MEDIUM', detected_at: ts(0),
+    is_pirate: true, verdict: 'SUSPICIOUS',
+    analysis: {
+      domain_reputation_score: 0.80, stream_embed_score: 0.55, keyword_match_score: 0.78, ad_popup_score: 0.60,
+      signals_detected: ['external link to stream', 'team names in heading', 'suspicious TLD .cc'],
+      reasoning: 'Link aggregator page with external redirect to third-party stream. Does not host stream directly but facilitates access. Team names present in page heading. Lower confidence due to indirect hosting.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_007', event_name: 'LA Lakers vs Boston Celtics — NBA Finals Game 5',
+    source_url: 'https://nbastreams.to/lakers-celtics-game5',
+    composite_score: 0.86, confidence: 'HIGH', detected_at: ts(3),
+    is_pirate: true, verdict: 'PIRATE_STREAM_DETECTED',
+    analysis: {
+      domain_reputation_score: 0.90, stream_embed_score: 0.84, keyword_match_score: 0.88, ad_popup_score: 0.72,
+      signals_detected: ['iframe src=streameast.player', 'team names in URL', 'ESPN watermark detected', 'known pirate domain'],
+      reasoning: 'NBA-focused piracy site embedding StreamEast player. URL contains team names and game number. ESPN broadcast watermark visible in stream frames. Known domain from piracy watchlist.',
+      page_verified: true,
+    },
+  },
+  {
+    detection_id: 'det_008', event_name: 'Real Madrid vs Bayern Munich — UCL Semi-Final Leg 2',
+    source_url: 'https://hesgoal.tv/champions-league-live',
+    composite_score: 0.68, confidence: 'MEDIUM', detected_at: ts(0.5),
+    is_pirate: true, verdict: 'SUSPICIOUS',
+    analysis: {
+      domain_reputation_score: 0.75, stream_embed_score: 0.52, keyword_match_score: 0.72, ad_popup_score: 0.55,
+      signals_detected: ['generic stream embed', 'Champions League keyword', 'betting ad sidebar'],
+      reasoning: 'Sports streaming aggregator with generic "Champions League Live" page. Stream embed present but may be delayed or low quality. Moderate confidence — event-specific content is limited. Betting ads in sidebar.',
+      page_verified: true,
+    },
+  },
 ];
 
 export const DEMO_ENFORCEMENT_STATS = {

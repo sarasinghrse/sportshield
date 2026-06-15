@@ -208,11 +208,17 @@ export default function RadarPage() {
     if (isDemo) {
       setAnalysisResult({
         is_pirate: true,
-        verdict: 'PIRATE_STREAM_DETECTED',
+        verdict: 'CONFIRMED_PIRATE',
         composite_score: 0.89,
-        audio_match: { score: 0.92 },
-        visual_match: { score: 0.85 },
-        multimodal: { signals: 4, total_signals: 5, skipped: false },
+        analysis: {
+          domain_reputation_score: 0.95,
+          stream_embed_score: 0.88,
+          keyword_match_score: 0.92,
+          ad_popup_score: 0.75,
+          signals_detected: ['iframe src=player.m3u8', 'team name in title', 'popup ad detected', 'known pirate domain'],
+          reasoning: 'Page contains embedded HLS stream player with direct match to event name. Known pirate domain with aggressive ad overlays.',
+          page_verified: true,
+        },
       });
       return;
     }
@@ -445,23 +451,34 @@ export default function RadarPage() {
                           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.1rem', color: analysisResult.is_pirate ? C.red : C.greenLight, marginBottom: 10 }}>
                             {analysisResult.verdict === 'PIRATE_STREAM_DETECTED' ? 'PIRATE DETECTED' : analysisResult.verdict === 'SUSPICIOUS' ? 'SUSPICIOUS' : 'CLEAN'}
                           </div>
-                          <div className="grid-3" style={{ gap: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                             <div className="wr-card" style={{ padding: '10px 14px', textAlign: 'center' }}>
                               <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Composite</div>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.orange }}>{(analysisResult.composite_score * 100).toFixed(1)}%</div>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.orange }}>{(analysisResult.composite_score * 100).toFixed(0)}%</div>
                             </div>
                             <div className="wr-card" style={{ padding: '10px 14px', textAlign: 'center' }}>
-                              <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Audio Match</div>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.blue }}>{((analysisResult.audio_match?.score || 0) * 100).toFixed(1)}%</div>
+                              <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Domain Risk</div>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.red }}>{((analysisResult.analysis?.domain_reputation_score || 0) * 100).toFixed(0)}%</div>
                             </div>
                             <div className="wr-card" style={{ padding: '10px 14px', textAlign: 'center' }}>
-                              <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Visual Match</div>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.purple }}>{((analysisResult.visual_match?.score || 0) * 100).toFixed(1)}%</div>
+                              <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Stream Embed</div>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.blue }}>{((analysisResult.analysis?.stream_embed_score || 0) * 100).toFixed(0)}%</div>
+                            </div>
+                            <div className="wr-card" style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Content Match</div>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.purple }}>{((analysisResult.analysis?.keyword_match_score || 0) * 100).toFixed(0)}%</div>
                             </div>
                           </div>
-                          {analysisResult.multimodal && !analysisResult.multimodal.skipped && (
-                            <div style={{ marginTop: 10, fontSize: '0.78rem', color: C.muted }}>
-                              Multimodal confirmation: {analysisResult.multimodal.signals}/{analysisResult.multimodal.total_signals} signals confirmed
+                          {analysisResult.analysis?.reasoning && (
+                            <div style={{ marginTop: 10, fontSize: '0.78rem', color: C.muted, lineHeight: 1.6 }}>
+                              {analysisResult.analysis.reasoning}
+                            </div>
+                          )}
+                          {analysisResult.analysis?.signals_detected?.length > 0 && (
+                            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {analysisResult.analysis.signals_detected.slice(0, 6).map((s, i) => (
+                                <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(239,68,68,0.1)', color: C.red, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>{s}</span>
+                              ))}
                             </div>
                           )}
                         </div>
