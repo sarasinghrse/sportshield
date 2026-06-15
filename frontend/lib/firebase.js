@@ -137,11 +137,11 @@ export function subscribeToPublicAssets(callback) {
 
 /**
  * Subscribe to alerts for all public assets (for the community violation counter).
+ * Fetches recent alerts across all users — the community page filters to public assets.
  */
 export function subscribeToPublicAlerts(callback) {
   const q = query(
     collection(db, 'alerts'),
-    where('userId', '==', DEMO_USER),
     orderBy('createdAt', 'desc'),
     limit(200)
   );

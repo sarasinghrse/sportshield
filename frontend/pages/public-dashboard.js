@@ -19,9 +19,11 @@ export default function PublicDashboard() {
     return () => { u1(); u2(); };
   }, []);
 
-  // Build alert map: assetId → alerts[]
+  // Build alert map: assetId → alerts[] (only for public assets)
+  const publicAssetIds = new Set(assets.map(a => a.id));
+  const publicAlerts = alerts.filter(a => publicAssetIds.has(a.assetId));
   const alertsByAsset = {};
-  alerts.forEach(a => {
+  publicAlerts.forEach(a => {
     if (!alertsByAsset[a.assetId]) alertsByAsset[a.assetId] = [];
     alertsByAsset[a.assetId].push(a);
   });
@@ -32,7 +34,7 @@ export default function PublicDashboard() {
     return true;
   });
 
-  const totalViolations = alerts.length;
+  const totalViolations = publicAlerts.length;
   const violatedAssets  = assets.filter(a => (alertsByAsset[a.id]?.length || 0) > 0).length;
   const communityScore = assets.length > 0
     ? Math.round(((assets.length - violatedAssets) / assets.length) * 100)

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
 import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
@@ -13,6 +14,7 @@ const TAB_UPLOAD  = 'upload';
 const TAB_URL     = 'url';
 
 export default function UploadPage() {
+  const { user } = useAuth();
   const fileInputRef = useRef(null);
   const [tab,             setTab]            = useState(TAB_UPLOAD);
 
@@ -73,6 +75,7 @@ export default function UploadPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      if (user?.uid) formData.append('userId', user.uid);
       let res;
       for (let attempt = 0; attempt < 2; attempt++) {
         res = await fetch(`${API_URL}/api/media/upload`, { method: 'POST', body: formData });
@@ -120,7 +123,7 @@ export default function UploadPage() {
       const res  = await fetch(`${API_URL}/api/media/scan-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmed, label: socialLabel || undefined }),
+        body: JSON.stringify({ url: trimmed, label: socialLabel || undefined, userId: user?.uid || 'demo_user' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);

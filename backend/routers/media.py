@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from services.firebase_client import db
@@ -249,7 +249,7 @@ def run_video_scan(asset_id, user_id, video_fp, original_url):
 # ── Upload endpoint ──────────────────────────────────────────────────────────
 
 @router.post("/upload")
-async def upload_media(file: UploadFile = File(...)):
+async def upload_media(file: UploadFile = File(...), userId: str = Form("demo_user")):
     file_bytes = await file.read()
     content_type = file.content_type or ""
     is_audio = content_type.startswith("audio")
@@ -259,7 +259,7 @@ async def upload_media(file: UploadFile = File(...)):
         else "image"
     )
     asset_id = str(uuid.uuid4())
-    user_id  = "demo_user"
+    user_id  = userId
 
     # Step 1: Upload to Cloudinary (essential — must succeed)
     cloudinary_type = "video" if resource_type in ("video", "audio") else "image"
@@ -449,6 +449,7 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
 class SocialScanRequest(BaseModel):
     url: str
     label: str = ""   # e.g. "Instagram post", "Twitter screenshot"
+    userId: str = "demo_user"
 
 
 @router.post("/scan-url")
@@ -465,7 +466,7 @@ async def scan_social_url(req: SocialScanRequest):
         )
 
     asset_id  = str(uuid.uuid4())
-    user_id   = "demo_user"
+    user_id   = req.userId
     filename  = req.label or f"social_{asset_id[:8]}"
 
     # Upload extracted image to Cloudinary
@@ -508,8 +509,8 @@ async def scan_social_url(req: SocialScanRequest):
 # ── List assets endpoint ─────────────────────────────────────────────────────
 
 @router.get("/assets")
-async def list_assets():
-    assets = db.collection("assets").where("userId", "==", "demo_user").stream()
+async def list_assets(userId: str = Query("demo_user")):
+    assets = db.collection("assets").where("userId", "==", userId).stream()
     return [{"id": doc.id, **doc.to_dict()} for doc in assets]
 
 
