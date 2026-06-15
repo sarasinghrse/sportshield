@@ -1,0 +1,5 @@
+# GCP-only dependencies — installed in the Cloud Run image, NOT on Render.
+# All usages are lazy-imported and flag-gated, so the base app runs without them.
+google-cloud-storage
+google-cloud-vision
+google-cloud-aiplatform
