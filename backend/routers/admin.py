@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.firebase_client import db as firestore_db
 import httpx
+import os
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter()
@@ -61,7 +62,7 @@ async def mark_message_read(message_id: str):
 
 @router.get("/health-check")
 async def health_check():
-    api_url = "https://sportshield-13rj.onrender.com"
+    api_url = os.getenv("API_BASE_URL", "https://sportshield-api-117814433634.us-central1.run.app")
     endpoints = [
         {"path": "/health", "method": "GET"},
         {"path": "/api/media/list", "method": "GET"},

@@ -11,7 +11,7 @@
   ],
   "host_permissions": [
     "http://localhost:8000/*",
-    "https://sportshield-13rj.onrender.com/*"
+    "https://sportshield-api-117814433634.us-central1.run.app/*"
   ],
   "background": {
     "service_worker": "background.js"
