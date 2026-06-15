@@ -1,17 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SportShield — Protect & Detect",
-  "version": "1.0.0",
-  "description": "Right-click protect, report pirate streams, scan pages for stolen content, verify C2PA credentials — all from your browser.",
+  "version": "1.1.0",
+  "description": "Flag pirate sites, access your dashboard, and open the War Room — all from your browser.",
   "permissions": [
     "activeTab",
     "contextMenus",
     "storage",
     "notifications"
-  ],
-  "host_permissions": [
-    "http://localhost:8000/*",
-    "https://sportshield-api-117814433634.us-central1.run.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -28,13 +24,5 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }

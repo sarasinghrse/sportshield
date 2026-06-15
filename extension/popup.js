@@ -1,78 +1,56 @@
-// SportShield Extension — Popup Script
+const SITE_URL = 'https://sportshield--sportshield-app.us-central1.hosted.app';
 
-const API_BASE = 'http://localhost:8000/api/media';
-
-document.addEventListener('DOMContentLoaded', async () => {
-  // Load stats
-  try {
-    const [radarRes, crowdRes, profileRes] = await Promise.all([
-      fetch(`${API_BASE}/radar/stats`).then(r => r.json()).catch(() => null),
-      fetch(`${API_BASE}/crowd/stats`).then(r => r.json()).catch(() => null),
-      fetch(`${API_BASE}/crowd/contributors/demo_user`).then(r => r.json()).catch(() => null),
-    ]);
-
-    if (radarRes) {
-      document.getElementById('stat-events').textContent = radarRes.active_events || 0;
-      document.getElementById('stat-pirates').textContent = radarRes.pirate_streams_found || 0;
-      document.getElementById('stat-suspects').textContent = radarRes.total_suspects_analyzed || 0;
-    }
-
-    if (profileRes && !profileRes.detail) {
-      document.getElementById('stat-points').textContent = profileRes.total_points || 0;
-      const rank = profileRes.rank || 'scout';
-      document.getElementById('rank-badge').textContent = rank.charAt(0).toUpperCase() + rank.slice(1);
-      document.getElementById('rank-info').textContent =
-        `${profileRes.verified_finds || 0} verified finds • ${profileRes.submissions || 0} reports`;
-    }
-  } catch (e) {
-    // API not reachable
-  }
-
-  // Scan Page button
-  document.getElementById('btn-scan-page').addEventListener('click', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  // Flag as Pirate Site
+  document.getElementById('btn-flag').addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) {
-      chrome.tabs.sendMessage(tab.id, { action: 'scanPageImages' });
-      window.close();
-    }
-  });
+    if (!tab) return;
 
-  // Report Page button
-  document.getElementById('btn-report').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) {
-      try {
-        const result = await fetch(`${API_BASE}/crowd/submit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            suspectUrl: tab.url,
-            eventName: '',
-            platform: '',
-            description: `Reported via extension: ${tab.title}`,
-          }),
-        });
-        if (result.ok) {
-          const btn = document.getElementById('btn-report');
-          btn.querySelector('div > div:first-child').textContent = 'Reported!';
-          btn.style.borderColor = 'rgba(74,222,128,0.4)';
-          setTimeout(() => window.close(), 1500);
-        }
-      } catch (e) {
-        // Silent
+    // Store the flagged site locally
+    const flagData = {
+      url: tab.url,
+      title: tab.title || '',
+      flaggedAt: new Date().toISOString(),
+    };
+
+    chrome.storage.local.get({ flaggedSites: [] }, (data) => {
+      const sites = data.flaggedSites;
+      if (!sites.some((s) => s.url === flagData.url)) {
+        sites.push(flagData);
+        chrome.storage.local.set({ flaggedSites: sites });
       }
+    });
+
+    // Show success UI
+    document.getElementById('main-view').style.display = 'none';
+    const success = document.getElementById('flag-success');
+    success.classList.add('visible');
+    try {
+      const host = new URL(tab.url).hostname;
+      document.getElementById('flag-url').textContent = host;
+    } catch {
+      document.getElementById('flag-url').textContent = tab.url;
     }
+
+    // Auto-close after 2s
+    setTimeout(() => window.close(), 2000);
   });
 
-  // Open War Room
-  document.getElementById('btn-dashboard').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'http://localhost:3000/radar' });
+  // Open War Room — goes to site login, then redirects to radar
+  document.getElementById('btn-warroom').addEventListener('click', () => {
+    chrome.tabs.create({ url: `${SITE_URL}/radar` });
     window.close();
   });
 
-  // Open Leaderboard
-  document.getElementById('btn-leaderboard').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'http://localhost:3000/radar' });
+  // Open Dashboard
+  document.getElementById('btn-dashboard').addEventListener('click', () => {
+    chrome.tabs.create({ url: SITE_URL });
+    window.close();
+  });
+
+  // Footer link
+  document.getElementById('footer-link').addEventListener('click', () => {
+    chrome.tabs.create({ url: SITE_URL });
     window.close();
   });
 });
