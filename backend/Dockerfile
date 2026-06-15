@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       tesseract-ocr \
       libglib2.0-0 \
       libgl1 \
+      g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Base (free-tier) deps + GCP deps. GCP libs live in a separate file so the
