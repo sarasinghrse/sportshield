@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import ProfileAvatar from '../components/ProfileAvatar';
+import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
 import { subDays, startOfDay, format } from 'date-fns';
 import {
@@ -104,6 +105,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="ap-nav-right">
           <ProfileAvatar />
+          <MobileNav />
         </div>
       </nav>
 

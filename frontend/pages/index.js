@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [newWatchLabel, setNewWatchLabel] = useState('');
   const [watchLoading, setWatchLoading] = useState(false);
   const [summaries, setSummaries] = useState({});
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   const activeProfile = isDemo ? DEMO_PROFILE : profile;
 
@@ -246,8 +247,24 @@ export default function Dashboard() {
                 </span>
               )}
             </Link>
+            <button className="db-hamburger" onClick={() => setMobileMenu(v => !v)} aria-label="Menu">
+              {mobileMenu ? '✕' : '☰'}
+            </button>
           </div>
         </nav>
+
+        {/* ── Mobile slide-down menu ── */}
+        {mobileMenu && (
+          <div className="db-mobile-menu">
+            <Link href="/radar" onClick={() => setMobileMenu(false)}>Live Radar</Link>
+            <Link href="/public-dashboard" onClick={() => setMobileMenu(false)}>Community</Link>
+            <Link href="/analytics" onClick={() => setMobileMenu(false)}>Analytics</Link>
+            <Link href="/reports" onClick={() => setMobileMenu(false)}>Reports</Link>
+            <Link href="/settings" onClick={() => setMobileMenu(false)}>Settings</Link>
+            <Link href="/alerts" onClick={() => setMobileMenu(false)}>Alerts{unread > 0 ? ` (${unread})` : ''}</Link>
+            <Link href="/upload" onClick={() => setMobileMenu(false)} className="db-mobile-menu-cta">+ Upload Asset</Link>
+          </div>
+        )}
 
         <main className="app-main">
 

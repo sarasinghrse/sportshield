@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Head from 'next/head';
 import Footer from '../components/landing/Footer';
+import MobileNav from '../components/MobileNav';
 
 export default function IndividualDemo() {
   return (
@@ -8,13 +9,17 @@ export default function IndividualDemo() {
       <Head><title>Individual Athlete Demo — SportShield</title></Head>
       <div className="ap-root">
         <nav className="ap-nav">
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <img src="/images/sportshield-logo-transparent.png" alt="SportShield" style={{ height: 30 }} />
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.1rem', color: '#5cc85c', letterSpacing: '0.06em' }}>SPORTSHIELD</span>
-          </Link>
-          <Link href="/" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', letterSpacing: '0.06em' }}>
-            ← BACK TO DASHBOARD
-          </Link>
+          <div className="ap-nav-left">
+            <Link href="/" className="ap-back">← Dashboard</Link>
+            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+            <Link href="/" className="ap-logo">
+              <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
+              <span className="ap-logo-text">SPORTSHIELD</span>
+            </Link>
+          </div>
+          <div className="ap-nav-right">
+            <MobileNav />
+          </div>
         </nav>
 
         <main style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>

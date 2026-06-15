@@ -1498,6 +1498,124 @@ img, video, iframe, svg { max-width: 100%; }
 /* Dashboard nav: hide links on mobile, stack properly */
 .db-nav-links-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
 
+/* Dashboard hamburger — hidden on desktop */
+.db-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: rgba(255,255,255,0.75);
+  font-size: 1.15rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: border-color 0.2s, color 0.2s;
+}
+.db-hamburger:hover { border-color: var(--green-400); color: var(--green-400); }
+
+/* Dashboard mobile slide-down menu — hidden on desktop */
+.db-mobile-menu {
+  display: none;
+  position: fixed;
+  top: 62px; left: 0; right: 0;
+  background: rgba(8,15,9,0.98);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(26,92,26,0.4);
+  padding: 12px 16px 20px;
+  z-index: 99;
+  flex-direction: column;
+  gap: 2px;
+}
+.db-mobile-menu a {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(26,92,26,0.15);
+  transition: color 0.2s;
+}
+.db-mobile-menu a:last-child { border-bottom: none; }
+.db-mobile-menu a:hover { color: var(--green-400); }
+.db-mobile-menu-cta {
+  display: block;
+  margin-top: 10px;
+  background: var(--green-700) !important;
+  color: #fff !important;
+  text-align: center;
+  padding: 12px !important;
+  border-radius: 8px;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  font-size: 0.88rem !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: none !important;
+}
+
+/* App-page hamburger — hidden on desktop, shown on mobile */
+.ap-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: rgba(255,255,255,0.75);
+  font-size: 1.15rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: border-color 0.2s, color 0.2s;
+  margin-left: auto;
+}
+.ap-hamburger:hover { border-color: var(--green-400); color: var(--green-400); }
+
+/* App-page mobile slide-down menu — hidden on desktop */
+.ap-mobile-menu {
+  display: none;
+  position: fixed;
+  top: 52px; left: 0; right: 0;
+  background: rgba(8,15,9,0.98);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(26,92,26,0.4);
+  padding: 12px 16px 20px;
+  z-index: 99;
+  flex-direction: column;
+  gap: 2px;
+}
+.ap-mobile-menu a {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(26,92,26,0.15);
+  transition: color 0.2s;
+}
+.ap-mobile-menu a:last-child { border-bottom: none; }
+.ap-mobile-menu a:hover { color: var(--green-400); }
+.ap-mobile-menu-active { color: var(--green-400) !important; font-weight: 600 !important; }
+.ap-mobile-menu-cta {
+  display: block;
+  margin-top: 10px;
+  background: var(--green-700) !important;
+  color: #fff !important;
+  text-align: center;
+  padding: 12px !important;
+  border-radius: 8px;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  font-size: 0.88rem !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: none !important;
+}
+
 /* URL watchlist form row */
 .db-watch-form { display: flex; gap: 8px; }
 
@@ -1519,11 +1637,13 @@ img, video, iframe, svg { max-width: 100%; }
   .grid-3 { grid-template-columns: 1fr !important; }
   .grid-2 { grid-template-columns: 1fr !important; }
 
-  /* Dashboard nav: hide text links, keep upload + avatar + bell */
+  /* Dashboard nav: hide text links, show hamburger */
   .db-nav-links-wrap .db-nav-link { display: none; }
   .db-nav-links-wrap { gap: 4px; }
   .db-nav { padding: 0 12px !important; }
   .db-logo-text { font-size: 1rem; }
+  .db-hamburger { display: flex; align-items: center; justify-content: center; }
+  .db-mobile-menu { display: flex; }
 
   /* Main content less padding */
   .app-main { padding: 20px 14px !important; }
@@ -1558,6 +1678,8 @@ img, video, iframe, svg { max-width: 100%; }
   /* App page nav links */
   .ap-nav { padding: 0 12px !important; }
   .ap-nav-link { display: none !important; }
+  .ap-hamburger { display: flex; align-items: center; justify-content: center; }
+  .ap-mobile-menu { display: flex; }
 
   /* Section titles */
   .db-section-title { font-size: 1.05rem; }

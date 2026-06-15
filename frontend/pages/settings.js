@@ -6,6 +6,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
+import MobileNav from '../components/MobileNav';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* ── helpers ───────────────────────────────────────────────────── */
@@ -171,6 +172,7 @@ export default function SettingsPage() {
         </div>
         <div className="ap-nav-right">
           <ProfileAvatar />
+          <MobileNav />
         </div>
       </nav>
 

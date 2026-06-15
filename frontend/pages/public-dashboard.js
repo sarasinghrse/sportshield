@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { formatDistanceToNow, subDays, startOfDay, format } from 'date-fns';
 import { subscribeToPublicAssets, subscribeToPublicAlerts } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
+import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
 
 export default function PublicDashboard() {
@@ -60,6 +61,7 @@ export default function PublicDashboard() {
               </Link>
             </>
           )}
+          <MobileNav />
         </div>
       </nav>
 

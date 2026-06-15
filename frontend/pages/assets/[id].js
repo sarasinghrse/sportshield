@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { db, subscribeToScanResults, setAssetVisibility } from '../../lib/firebase';
 import Footer from '../../components/landing/Footer';
+import MobileNav from '../../components/MobileNav';
 import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -158,6 +159,9 @@ export default function AssetDetail() {
             <span className="ap-logo-text">SPORTSHIELD</span>
           </Link>
           <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Asset</span>
+        </div>
+        <div className="ap-nav-right">
+          <MobileNav />
         </div>
       </nav>
 

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import Footer from '../components/landing/Footer';
+import MobileNav from '../components/MobileNav';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -61,6 +62,7 @@ export default function VerifyPage() {
         <div className="ap-nav-right">
           <Link href="/public-dashboard" className="ap-nav-link">Community</Link>
           <Link href="/" className="ap-nav-link">Dashboard →</Link>
+          <MobileNav />
         </div>
       </nav>
 

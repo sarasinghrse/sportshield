@@ -5,6 +5,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { db, subscribeToAlerts, markAlertRead } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import ProfileAvatar from '../components/ProfileAvatar';
+import MobileNav from '../components/MobileNav';
 
 const TAKEDOWN_STATUSES = [
   { value: 'none',         label: 'No Action' },
@@ -91,6 +92,7 @@ export default function AlertsPage() {
             </button>
           )}
           <ProfileAvatar />
+          <MobileNav />
         </div>
       </nav>
 

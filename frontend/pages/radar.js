@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
+import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
 import {
   DEMO_RADAR_STATS, DEMO_RADAR_EVENTS, DEMO_DETECTIONS,
@@ -308,20 +309,22 @@ export default function RadarPage() {
 
       <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Barlow, sans-serif' }}>
         {/* ── Nav ── */}
-        <nav className="wr-nav">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Link href="/" className="wr-logo">
+        <nav className="ap-nav">
+          <div className="ap-nav-left">
+            <Link href="/" className="ap-logo">
               <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
-              <span className="wr-logo-text">SPORTSHIELD</span>
+              <span className="ap-logo-text">SPORTSHIELD</span>
             </Link>
-            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.08)', margin: '0 10px' }} />
-            <Link href="/" className="wr-nav-link">Dashboard</Link>
-            <Link href="/radar" className="wr-nav-link wr-nav-link-active">Live Radar</Link>
-            <Link href="/analytics" className="wr-nav-link">Analytics</Link>
-            <Link href="/reports" className="wr-nav-link">Reports</Link>
-            <Link href="/settings" className="wr-nav-link">Settings</Link>
+            <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Live Radar</span>
           </div>
-          <ProfileAvatar />
+          <div className="ap-nav-right">
+            <Link href="/" className="ap-nav-link">Dashboard</Link>
+            <Link href="/analytics" className="ap-nav-link">Analytics</Link>
+            <Link href="/reports" className="ap-nav-link">Reports</Link>
+            <Link href="/settings" className="ap-nav-link">Settings</Link>
+            <ProfileAvatar />
+            <MobileNav />
+          </div>
         </nav>
 
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>

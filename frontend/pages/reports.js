@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { format } from 'date-fns';
 import { useAuth } from '../lib/useAuth';
 import ProfileAvatar from '../components/ProfileAvatar';
+import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
 import { DEMO_REPORT } from '../lib/demoData';
 
@@ -77,6 +78,7 @@ export default function ReportsPage() {
           </div>
           <div className="ap-nav-right">
             <ProfileAvatar />
+            <MobileNav />
           </div>
         </nav>
 
