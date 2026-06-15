@@ -30,6 +30,7 @@ from qdrant_client.models import (
 # ── Config ───────────────────────────────────────────────────────────────────
 
 HF_TOKEN = os.getenv("HF_TOKEN", "")
+EMBEDDINGS_BACKEND = os.getenv("EMBEDDINGS_BACKEND", "clip")  # clip | vertex
 CLIP_MODEL = "openai/clip-vit-base-patch32"
 HF_FEATURE_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{CLIP_MODEL}"
 VECTOR_DIM = 512
@@ -74,6 +75,16 @@ def get_clip_embedding(image_bytes: bytes) -> list[float] | None:
 
     Returns 512-dim float vector, or None if API fails.
     """
+    # Optional Vertex AI backend (EMBEDDINGS_BACKEND=vertex). Returns a 512-dim
+    # vector to stay compatible with the existing Qdrant collection. Falls back
+    # to HuggingFace CLIP if Vertex fails.
+    if EMBEDDINGS_BACKEND == "vertex":
+        from services.vertex_embeddings import get_image_embedding
+        vec = get_image_embedding(image_bytes, dim=VECTOR_DIM)
+        if vec:
+            return vec[:VECTOR_DIM]
+        print("[clip] Vertex embedding failed, falling back to HuggingFace")
+
     if not HF_TOKEN:
         print("[clip] No HF_TOKEN set, skipping embedding")
         return None
@@ -229,6 +240,32 @@ def text_search(query: str, user_id: str = None,
     Text-to-image search using CLIP's multimodal capability.
     E.g. "player celebrating goal" → finds matching images.
     """
+    # Vertex text embedding path (shares the 512-dim image space).
+    if EMBEDDINGS_BACKEND == "vertex":
+        from services.vertex_embeddings import get_text_embedding
+        vec = get_text_embedding(query, dim=VECTOR_DIM)
+        if vec:
+            client = _get_qdrant()
+            query_filter = None
+            if user_id:
+                query_filter = Filter(
+                    must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
+                )
+            results = client.query_points(
+                collection_name=COLLECTION_NAME,
+                query=vec[:VECTOR_DIM],
+                query_filter=query_filter,
+                limit=top_k,
+            )
+            return [
+                {
+                    "asset_id": hit.payload.get("asset_id", ""),
+                    "filename": hit.payload.get("filename", ""),
+                    "score": round(hit.score, 4),
+                }
+                for hit in results.points
+            ]
+
     if not HF_TOKEN:
         return []
 
