@@ -16,12 +16,12 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_API_URL
-    value: https://REPLACE-with-cloud-run-backend-url
+    value: https://sportshield-api-117814433634.us-central1.run.app
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: REPLACE
+    value: AIzaSyBAk2Bl3VZ6ghArtzXLu6ciU08Vn1dSNE0
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: sportshield-app.firebaseapp.com
@@ -30,11 +30,11 @@ env:
     value: sportshield-app
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: REPLACE
+    value: sportshield-app.firebasestorage.app
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: REPLACE
+    value: "117814433634"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: REPLACE
+    value: 1:117814433634:web:0f402952389ee6f55f3e3b
     availability: [BUILD, RUNTIME]
