@@ -83,15 +83,26 @@ export default function RadarPage() {
       return;
     }
     let useDemo = false;
+    // Time-boxed fetch: the Render free-tier backend can be cold/asleep, and
+    // without a timeout the whole page hangs on "Loading war room data…".
+    // After 12s we fall back so the War Room always renders.
+    const fetchJson = (url, fallback) => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      return fetch(url, { signal: ctrl.signal })
+        .then(r => (r.ok ? r.json() : fallback))
+        .catch(() => fallback)
+        .finally(() => clearTimeout(timer));
+    };
     try {
       const [statsRes, eventsRes, detectionsRes, enfRes, crowdRes, lbRes, casesRes] = await Promise.all([
-        fetch(`${API}/api/media/radar/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`${API}/api/media/radar/events`).then(r => r.ok ? r.json() : { events: [] }).catch(() => ({ events: [] })),
-        fetch(`${API}/api/media/radar/detections`).then(r => r.ok ? r.json() : { detections: [] }).catch(() => ({ detections: [] })),
-        fetch(`${API}/api/media/enforce/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`${API}/api/media/crowd/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`${API}/api/media/crowd/leaderboard?limit=10`).then(r => r.ok ? r.json() : { leaderboard: [] }).catch(() => ({ leaderboard: [] })),
-        fetch(`${API}/api/media/enforce/cases`).then(r => r.ok ? r.json() : { cases: [] }).catch(() => ({ cases: [] })),
+        fetchJson(`${API}/api/media/radar/stats`, null),
+        fetchJson(`${API}/api/media/radar/events`, { events: [] }),
+        fetchJson(`${API}/api/media/radar/detections`, { detections: [] }),
+        fetchJson(`${API}/api/media/enforce/stats`, null),
+        fetchJson(`${API}/api/media/crowd/stats`, null),
+        fetchJson(`${API}/api/media/crowd/leaderboard?limit=10`, { leaderboard: [] }),
+        fetchJson(`${API}/api/media/enforce/cases`, { cases: [] }),
       ]);
       const liveEvents = eventsRes.events || [];
       const liveDet = detectionsRes.detections || [];
