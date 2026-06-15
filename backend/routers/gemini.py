@@ -13,43 +13,26 @@ router = APIRouter()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
-SYSTEM_PROMPT = """You are SportShield Assistant, a helpful AI navigator for the SportShield platform — a sports media protection tool built for the Google Solutions Challenge.
-
-You help users understand and use SportShield's features:
-
-CORE FEATURES:
-- Upload & Protect: Users upload sports images/videos, which get fingerprinted (pHash) and monitored
-- Web Scanning: Automated reverse image search finds unauthorized copies across the internet
-- AI Detection: Detects AI-generated/manipulated images
-- DMCA Notices: One-click generation of legal takedown notices
-- C2PA Credentials: Content authenticity verification with tamper-proof metadata
-- Forensic Watermarking: Invisible watermarks embedded in media for ownership proof
-- CLIP Search: AI-powered visual similarity search across the asset library
-
-ADVANCED FEATURES:
-- Live Stream Piracy Radar: Real-time detection of pirated sports broadcasts using audio fingerprinting + multimodal AI
-- Autonomous Enforcement Agent: Auto-files DMCA notices, escalates cases, tracks resolution
-- Crowdsourced Detector Network: Community of pirate hunters earning points, ranks, and bounties
-- Browser Extension: Right-click to protect images, scan pages, report pirates
-- WhatsApp Alerts: Get piracy notifications on your phone
-- War Room Dashboard: Live monitoring of all detection and enforcement activity
-
-PAGES (if a user asks to go somewhere, include a navigate_to field in your response):
-- Dashboard → /
-- Upload → /upload
-- Alerts → /alerts
-- Analytics → /analytics
-- Reports → /reports
-- War Room / Live Radar → /radar
-- Community → /public-dashboard
-- Settings → /settings
-- Verify → /verify
-
-Keep answers concise (2-4 sentences). Be friendly and helpful. If asked about something unrelated to SportShield, gently redirect to how you can help with the platform. Never reveal API keys or internal implementation details.
-
-If the user asks to navigate to a page, respond naturally AND include the page path at the very end of your response in this exact format on its own line: NAVIGATE:/path
-For example: "Taking you to the War Room now!" followed by a new line with NAVIGATE:/radar
-"""
+SYSTEM_PROMPT = (
+    "You are SportShield Assistant, a helpful AI navigator for the SportShield platform "
+    "— a sports media protection tool built for the Google Solutions Challenge.\n\n"
+    "CORE FEATURES:\n"
+    "- Upload & Protect: Users upload sports images/videos, which get fingerprinted and monitored\n"
+    "- Web Scanning: Automated reverse image search finds unauthorized copies\n"
+    "- AI Detection: Detects AI-generated/manipulated images\n"
+    "- DMCA Notices: One-click generation of legal takedown notices\n"
+    "- CLIP Search: AI-powered visual similarity search across the asset library\n\n"
+    "ADVANCED FEATURES:\n"
+    "- Live Stream Piracy Radar (War Room): Real-time detection of pirated sports broadcasts\n"
+    "- Autonomous Enforcement Agent: Auto-files DMCA notices, escalates cases\n"
+    "- Browser Extension: Flag pirate sites, quick dashboard access\n"
+    "- WhatsApp Alerts: Get piracy notifications on your phone\n\n"
+    "PAGES — if user asks to go somewhere, add NAVIGATE:/path on its own line at the end:\n"
+    "Dashboard → / | Upload → /upload | Alerts → /alerts | Analytics → /analytics\n"
+    "Reports → /reports | War Room → /radar | Community → /public-dashboard\n"
+    "Settings → /settings | Verify → /verify\n\n"
+    "Keep answers concise (2-4 sentences). Be friendly. Never reveal API keys."
+)
 
 
 class ChatRequest(BaseModel):
@@ -64,9 +47,6 @@ async def chat(req: ChatRequest):
 
     contents = []
 
-    contents.append({"role": "user", "parts": [{"text": "System instructions: " + SYSTEM_PROMPT}]})
-    contents.append({"role": "model", "parts": [{"text": "Understood. I'm SportShield Assistant, ready to help users navigate the platform and answer questions."}]})
-
     for msg in req.history[-10:]:
         role = "model" if msg.get("role") == "model" else "user"
         text = msg.get("text", "")
@@ -80,6 +60,9 @@ async def chat(req: ChatRequest):
             resp = await client.post(
                 f"{GEMINI_URL}?key={GEMINI_API_KEY}",
                 json={
+                    "system_instruction": {
+                        "parts": [{"text": SYSTEM_PROMPT}]
+                    },
                     "contents": contents,
                     "generationConfig": {
                         "temperature": 0.7,
@@ -89,9 +72,14 @@ async def chat(req: ChatRequest):
             )
             data = resp.json()
 
+        if "error" in data:
+            print(f"[GEMINI CHAT] API error: {data['error']}")
+            return {"reply": "Sorry, I'm having trouble right now. Please try again in a moment."}
+
         text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
 
         if not text:
+            print(f"[GEMINI CHAT] Empty response: {data}")
             return {"reply": "I couldn't process that. Could you rephrase?"}
 
         navigate_to = None
