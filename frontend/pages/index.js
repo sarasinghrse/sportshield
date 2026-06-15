@@ -423,12 +423,12 @@ export default function Dashboard() {
                     Browser Extension
                   </p>
                   <p style={{ color: C.muted, fontSize: '0.78rem' }}>
-                    Right-click protect, report pirates, scan pages, verify C2PA
+                    Flag pirate sites, open War Room, quick dashboard access
                   </p>
                 </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {['Right-click Protect', 'Report Pirates', 'Page Scanner', 'C2PA Verify', 'Watermark Check', 'Crowd Network'].map(f => (
+                {['Flag Pirate Sites', 'War Room Access', 'Dashboard Link', 'Image Scan (Soon)', 'Leaderboard (Soon)'].map(f => (
                   <span key={f} style={{
                     fontSize: '0.68rem', padding: '3px 8px', borderRadius: 20,
                     background: 'rgba(26,92,26,0.2)', color: '#4ade80',
@@ -544,6 +544,33 @@ export default function Dashboard() {
                 Free · No signup · Works on any WhatsApp
               </p>
             </div>
+          </div>
+
+          {/* ── Mobile App Coming Soon ── */}
+          <div className="db-card" style={{ padding: '20px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 16, border: '1px dashed rgba(96,165,250,0.3)', background: 'rgba(59,130,246,0.04)' }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(96,165,250,0.1) 100%)',
+              border: '1px solid rgba(96,165,250,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: 2 }}>
+                Mobile App Coming Soon!
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                Upload from your camera, get push alerts, and file takedowns on the go — built with Flutter + Firebase.
+              </p>
+            </div>
+            <span style={{
+              fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: '#60a5fa', background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.2)',
+              borderRadius: 6, padding: '4px 10px', whiteSpace: 'nowrap', flexShrink: 0,
+            }}>Coming Soon</span>
           </div>
 
           {/* ── URL Watchlist ── */}
