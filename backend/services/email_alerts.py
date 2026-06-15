@@ -12,27 +12,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY", "")
-BREVO_SMTP_SERVER = "smtp-relay.brevo.com"
-BREVO_SMTP_PORT = 587
-SENDER_EMAIL = "alerts@sportshield.app"
+GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
 SENDER_NAME = "SportShield Alerts"
 
 
 def send_email(to_email: str, subject: str, html_body: str) -> dict:
-    if not BREVO_SMTP_KEY:
-        return {"sent": False, "error": "SMTP key not configured"}
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        return {"sent": False, "error": "Gmail credentials not configured"}
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["From"] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
+        msg["From"] = f"{SENDER_NAME} <{GMAIL_ADDRESS}>"
         msg["To"] = to_email
         msg["Subject"] = subject
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(BREVO_SMTP_SERVER, BREVO_SMTP_PORT) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
-            server.login(SENDER_EMAIL, BREVO_SMTP_KEY)
+            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
             server.send_message(msg)
 
         return {"sent": True, "to": to_email, "subject": subject}

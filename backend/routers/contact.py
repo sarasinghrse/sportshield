@@ -1,21 +1,26 @@
 """
-Contact form endpoint — sends email via Brevo transactional API.
+Contact form endpoint — sends email via Gmail SMTP.
 Required env vars:
-  BREVO_SMTP_KEY     — your Brevo API key
-  BREVO_SENDER_EMAIL — a verified sender in your Brevo account
+  GMAIL_ADDRESS      — your Gmail address
+  GMAIL_APP_PASSWORD — App Password from myaccount.google.com/apppasswords
 """
 from fastapi import APIRouter
 from pydantic import BaseModel
-import httpx
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
-from config import BREVO_SMTP_KEY, BREVO_SENDER_EMAIL
+import os
 from services.firebase_client import db as firestore_db
 
 router = APIRouter()
 
+GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+
 TEAM_EMAILS = [
-    {"email": "anshurajwork@gmail.com", "name": "Anshu Raj"},
-    {"email": "sarasingh2k27@gmail.com", "name": "Sara Singh"},
+    "anshurajwork@gmail.com",
+    "sarasingh2k27@gmail.com",
 ]
 
 
@@ -26,9 +31,32 @@ class ContactForm(BaseModel):
     message: str
 
 
+def _send_gmail(to_list: list, subject: str, html: str, reply_to: str = None) -> dict:
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        return {"ok": False, "error": "Gmail credentials not configured"}
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"SportShield <{GMAIL_ADDRESS}>"
+        msg["To"] = ", ".join(to_list)
+        msg["Subject"] = subject
+        if reply_to:
+            msg["Reply-To"] = reply_to
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+
+        return {"ok": True}
+    except Exception as e:
+        print(f"[contact] Gmail send failed: {e}")
+        return {"ok": False, "error": str(e)}
+
+
 @router.post("/send")
 async def send_contact(data: ContactForm):
-    # Store in Firestore for admin dashboard
     try:
         firestore_db.collection("contact_messages").add({
             "name": data.name,
@@ -41,24 +69,11 @@ async def send_contact(data: ContactForm):
     except Exception as e:
         print(f"[CONTACT] Firestore save failed: {e}")
 
-    if not BREVO_SMTP_KEY:
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         print(f"[CONTACT] {data.name} <{data.email}>: {data.message}")
         return {"ok": True, "dev": True}
 
-    sender_email = BREVO_SENDER_EMAIL or "noreply@sportshield.vercel.app"
-
-    payload = {
-        "sender":  {"name": "SportShield", "email": sender_email},
-        "to":      TEAM_EMAILS,
-        "replyTo": {"email": data.email, "name": data.name},
-        "subject": f"[SportShield Contact] {data.subject} — from {data.name}",
-        "textContent": (
-            f"Name:    {data.name}\n"
-            f"Email:   {data.email}\n"
-            f"Subject: {data.subject}\n\n"
-            f"--- Message ---\n{data.message}"
-        ),
-        "htmlContent": f"""
+    html = f"""
 <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
   <div style="background:#1a5c1a;padding:20px 32px;border-radius:8px 8px 0 0;">
     <h2 style="color:#fff;margin:0;font-size:1.3rem;">SportShield Contact Form</h2>
@@ -74,30 +89,18 @@ async def send_contact(data: ContactForm):
     SportShield · Google Solutions Challenge 2026
   </p>
 </div>
-""",
-    }
+"""
 
-    try:
-        resp = httpx.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers={"api-key": BREVO_SMTP_KEY, "Content-Type": "application/json"},
-            timeout=15,
-        )
-        if resp.status_code in (200, 201, 202):
-            return {"ok": True}
-        return {"ok": False, "error": resp.text}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    return _send_gmail(
+        TEAM_EMAILS,
+        f"[SportShield Contact] {data.subject} — from {data.name}",
+        html,
+        reply_to=data.email,
+    )
 
 
 @router.post("/report-owner")
 async def report_to_owner(data: dict):
-    """
-    Send a DMCA-style notification to the site owner of a flagged URL.
-    Tries webmaster@, admin@, contact@ on the domain.
-    Also notifies our team.
-    """
     flagged_url = data.get("url", "")
     asset_name  = data.get("asset_name", "Sports media")
     confidence  = data.get("confidence", 0)
@@ -105,32 +108,19 @@ async def report_to_owner(data: dict):
     if not flagged_url:
         return {"ok": False, "error": "No URL provided"}
 
-    # Extract domain
     try:
         from urllib.parse import urlparse
         domain = urlparse(flagged_url).netloc.lstrip("www.")
     except Exception:
         return {"ok": False, "error": "Invalid URL"}
 
-    owner_candidates = [
-        {"email": f"webmaster@{domain}", "name": f"Webmaster ({domain})"},
-        {"email": f"admin@{domain}",     "name": f"Admin ({domain})"},
-        {"email": f"contact@{domain}",   "name": f"Contact ({domain})"},
-        {"email": f"dmca@{domain}",      "name": f"DMCA ({domain})"},
-    ]
-
-    if not BREVO_SMTP_KEY:
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         print(f"[REPORT-OWNER] Would notify {domain} about {flagged_url}")
         return {"ok": True, "dev": True, "domain": domain}
 
-    sender_email = BREVO_SENDER_EMAIL or "noreply@sportshield.vercel.app"
+    owner_emails = [f"webmaster@{domain}", f"admin@{domain}"]
 
-    payload = {
-        "sender":  {"name": "SportShield", "email": sender_email},
-        "to":      owner_candidates[:2],   # first two candidates
-        "bcc":     TEAM_EMAILS,
-        "subject": f"DMCA Notice — Unauthorized Sports Media on {domain}",
-        "htmlContent": f"""
+    html = f"""
 <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
   <div style="background:#1a5c1a;padding:20px 32px;border-radius:8px 8px 0 0;">
     <h2 style="color:#fff;margin:0;">Unauthorized Media Notice</h2>
@@ -146,21 +136,16 @@ async def report_to_owner(data: dict):
     <p>If you believe this is an error, please reply to this email with proof of licensing.</p>
     <hr style="border:none;border-top:1px solid #e0e7e0;margin:20px 0"/>
     <p style="font-size:0.85rem;color:#666;">
-      Sent via <a href="https://sportshield-rouge.vercel.app" style="color:#1a5c1a;">SportShield</a>
-      · Google Solutions Challenge 2026
+      Sent via SportShield · Google Solutions Challenge 2026
     </p>
   </div>
 </div>
-""",
-    }
+"""
 
-    try:
-        resp = httpx.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers={"api-key": BREVO_SMTP_KEY, "Content-Type": "application/json"},
-            timeout=15,
-        )
-        return {"ok": resp.status_code < 300, "domain": domain}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    result = _send_gmail(
+        owner_emails + TEAM_EMAILS,
+        f"DMCA Notice — Unauthorized Sports Media on {domain}",
+        html,
+    )
+    result["domain"] = domain
+    return result
