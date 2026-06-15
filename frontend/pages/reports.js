@@ -63,6 +63,102 @@ export default function ReportsPage() {
   const scoreColor = s?.protectionScoreCurrent >= 80 ? '#4ade80' : s?.protectionScoreCurrent >= 50 ? '#f59e0b' : '#ef4444';
   const scoreDiff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
 
+  const handleDownload = () => {
+    if (!report) return;
+    const periodStartStr = format(new Date(report.periodStart?.seconds ? report.periodStart.toDate() : report.periodStart), 'MMM d, yyyy');
+    const periodEndStr = format(new Date(report.periodEnd?.seconds ? report.periodEnd.toDate() : report.periodEnd), 'MMM d, yyyy');
+    const sc = s?.protectionScoreCurrent || 0;
+    const scColor = sc >= 80 ? '#4ade80' : sc >= 50 ? '#f59e0b' : '#ef4444';
+    const diff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
+    const alertRows = (report.topAlerts || []).map(ta => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;">${ta.assetName}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;">
+          <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700;text-transform:uppercase;
+            background:${ta.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)'};
+            color:${ta.severity === 'high' ? '#ef4444' : '#f59e0b'};">${ta.severity}</span>
+        </td>
+        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;color:#60a5fa;word-break:break-all;">${ta.foundUrl}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;font-weight:700;color:${Math.round(ta.confidence * 100) >= 80 ? '#ef4444' : '#f59e0b'};">${Math.round(ta.confidence * 100)}%</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SportShield Protection Report - ${periodEndStr}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080f09; color: #e0e0e0; padding: 40px 24px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid #1a3a1a; }
+  .header h1 { font-size: 1.8rem; color: #fff; margin-bottom: 4px; }
+  .header .period { font-size: 0.9rem; color: rgba(255,255,255,0.5); }
+  .header .brand { font-size: 0.75rem; color: #4ade80; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 18px 14px; text-align: center; }
+  .stat-value { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .score-card { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 22px 24px; margin-bottom: 28px; display: flex; align-items: center; gap: 20px; }
+  .score-value { font-size: 2.4rem; font-weight: 900; }
+  .score-max { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
+  .section { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 24px; margin-bottom: 28px; }
+  .section h3 { font-size: 1.05rem; color: #fff; margin-bottom: 14px; font-weight: 800; }
+  .narrative { color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.75; white-space: pre-line; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; padding: 10px 14px; color: rgba(255,255,255,0.4); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #1a3a1a; }
+  .footer { text-align: center; margin-top: 36px; padding-top: 20px; border-top: 1px solid #1a3a1a; font-size: 0.78rem; color: rgba(255,255,255,0.3); }
+  @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">SportShield</div>
+    <h1>Weekly Protection Report</h1>
+    <p class="period">${periodStartStr} &mdash; ${periodEndStr}</p>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value" style="color:#f87171;">${s?.newMatches || 0}</div><div class="stat-label">Matches Found</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#fbbf24;">${s?.alertsTriggered || 0}</div><div class="stat-label">Alerts Triggered</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#4ade80;">${s?.dmcaActionsTaken || 0}</div><div class="stat-label">DMCA Actions</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#34d399;">${s?.assetsScanned || 0}</div><div class="stat-label">Assets Scanned</div></div>
+  </div>
+  <div class="score-card">
+    <div><span class="score-value" style="color:${scColor};">${sc}</span> <span class="score-max">/ 100</span></div>
+    <div>
+      <p style="font-weight:800;color:#fff;margin-bottom:2px;">Protection Score</p>
+      <p style="font-size:0.82rem;color:${diff >= 0 ? '#4ade80' : '#f87171'};">${diff >= 0 ? '&#8593;' : '&#8595;'} ${Math.abs(diff)} from last week (${s?.protectionScorePrevious || 0})</p>
+    </div>
+  </div>
+  <div class="section">
+    <h3>AI Summary</h3>
+    <p class="narrative">${(report.narrative || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+  </div>
+  ${alertRows ? `<div class="section">
+    <h3>Top Alerts This Week</h3>
+    <table><thead><tr><th>Asset</th><th>Severity</th><th>Found URL</th><th>Confidence</th></tr></thead><tbody>${alertRows}</tbody></table>
+  </div>` : ''}
+  <div class="footer">
+    <p>Generated by SportShield &mdash; AI-Powered Sports Media Protection</p>
+    <p style="margin-top:4px;">Report downloaded on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+  </div>
+</div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sportshield-report-${format(new Date(report.periodEnd?.seconds ? report.periodEnd.toDate() : report.periodEnd), 'yyyy-MM-dd')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <Head><title>Reports — SportShield</title></Head>
@@ -104,9 +200,17 @@ export default function ReportsPage() {
                 </p>
               )}
             </div>
-            <button onClick={handleGenerate} disabled={generating || isDemo} className="ap-btn ap-btn-green" style={{ padding: '10px 20px', fontSize: '0.85rem', opacity: generating || isDemo ? 0.5 : 1 }}>
-              {generating ? 'Generating...' : 'Generate New Report'}
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {report && (
+                <button onClick={handleDownload} className="ap-btn ap-btn-ghost" style={{ padding: '10px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download Report
+                </button>
+              )}
+              <button onClick={handleGenerate} disabled={generating || isDemo} className="ap-btn ap-btn-green" style={{ padding: '10px 20px', fontSize: '0.85rem', opacity: generating || isDemo ? 0.5 : 1 }}>
+                {generating ? 'Generating...' : 'Generate New Report'}
+              </button>
+            </div>
           </div>
 
           {loading ? (

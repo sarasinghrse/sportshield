@@ -26,6 +26,7 @@ export default function UploadPage() {
   const [uploadedAsset,   setUploadedAsset]  = useState(null);
   const [dragOver,        setDragOver]       = useState(false);
   const [isPublic,        setIsPublic]       = useState(true);
+  const [sendEmailUpdates, setSendEmailUpdates] = useState(true);
 
   /* Scan & lifetime settings */
   const [scanRate,        setScanRate]       = useState('upload');
@@ -76,6 +77,7 @@ export default function UploadPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       if (user?.uid) formData.append('userId', user.uid);
+      formData.append('sendEmailUpdates', sendEmailUpdates ? 'true' : 'false');
       let res;
       for (let attempt = 0; attempt < 2; attempt++) {
         res = await fetch(`${API_URL}/api/media/upload`, { method: 'POST', body: formData });
@@ -317,6 +319,21 @@ export default function UploadPage() {
                 </div>
                 <label className="ap-toggle" style={{ flexShrink: 0 }}>
                   <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
+                  <span className="ap-toggle-slider" />
+                </label>
+              </div>
+
+              <div className="ap-card" style={{ padding: '18px 20px', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem', color: '#fff', marginBottom: 3 }}>
+                    {sendEmailUpdates ? 'Send Email Updates' : 'No Email Notifications'}
+                  </p>
+                  <p className="ap-muted" style={{ fontSize: '0.78rem' }}>
+                    {sendEmailUpdates ? 'Get notified when your asset is scanned and when protection expires.' : 'No email notifications for this asset.'}
+                  </p>
+                </div>
+                <label className="ap-toggle" style={{ flexShrink: 0 }}>
+                  <input type="checkbox" checked={sendEmailUpdates} onChange={e => setSendEmailUpdates(e.target.checked)} />
                   <span className="ap-toggle-slider" />
                 </label>
               </div>
