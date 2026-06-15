@@ -73,8 +73,16 @@ async def scan_event_for_pirates(event_id: str, user_id: str = "demo_user") -> d
         for query in search_queries:
             found = await _gemini_search(query, event_name, teams, broadcaster, league)
             results.extend(found)
-    else:
+
+    # Fallback: if the live search found nothing (match already over, links
+    # pulled, or no API key), surface known repeat-offender domains so the
+    # radar always returns actionable detections instead of an empty result.
+    used_fallback = False
+    if not results:
         results = _generate_deterministic_results(event_name, teams, broadcaster, league)
+        used_fallback = True
+
+    scan_method = "known_domains" if (used_fallback or not GEMINI_API_KEY) else "gemini_web_search"
 
     seen_urls = set()
     unique_results = []
@@ -86,7 +94,7 @@ async def scan_event_for_pirates(event_id: str, user_id: str = "demo_user") -> d
 
     detections_created = []
     for r in unique_results:
-        detection = _create_scan_detection(event, r, user_id)
+        detection = _create_scan_detection(event, r, user_id, scan_method)
         detections_created.append(detection)
 
     event_ref = _col(EVENTS_COL).document(event_id)
@@ -253,7 +261,7 @@ def _generate_deterministic_results(event_name: str, teams: list, broadcaster: s
     return results
 
 
-def _create_scan_detection(event: dict, scan_result: dict, user_id: str) -> dict:
+def _create_scan_detection(event: dict, scan_result: dict, user_id: str, scan_method: str = "known_domains") -> dict:
     detection_id = f"det_{uuid.uuid4().hex[:12]}"
 
     confidence_map = {"high": 0.92, "medium": 0.72, "low": 0.45}
@@ -272,7 +280,7 @@ def _create_scan_detection(event: dict, scan_result: dict, user_id: str) -> dict
         "confidence": confidence_str,
         "verdict": "PIRATE_STREAM_DETECTED",
         "description": scan_result.get("description", ""),
-        "scan_method": "gemini_web_search" if GEMINI_API_KEY else "known_domains",
+        "scan_method": scan_method,
         "audio_score": 0,
         "visual_score": 0,
         "multimodal_signals": 0,
