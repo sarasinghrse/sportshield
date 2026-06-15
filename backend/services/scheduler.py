@@ -55,6 +55,16 @@ def _run_weekly_reports():
         logger.error(f"Scheduler: weekly reports failed — {e}")
 
 
+def _check_lifetime_expiry():
+    logger.info("Scheduler: checking asset lifetime expiry")
+    try:
+        from services.lifetime_checker import check_expired_assets
+        check_expired_assets()
+        logger.info("Scheduler: lifetime expiry check complete")
+    except Exception as e:
+        logger.error(f"Scheduler: lifetime check failed — {e}")
+
+
 def start_scheduler():
     global _scheduler
     if _scheduler is not None:
@@ -63,5 +73,6 @@ def start_scheduler():
     _scheduler.add_job(rescan_all_assets, "interval", hours=24, id="daily_rescan")
     _scheduler.add_job(_run_url_checks, "interval", hours=6, id="url_watchlist_check")
     _scheduler.add_job(_run_weekly_reports, "cron", day_of_week="mon", hour=8, id="weekly_reports")
+    _scheduler.add_job(_check_lifetime_expiry, "interval", hours=12, id="lifetime_expiry_check")
     _scheduler.start()
-    logger.info("Scheduler: started — daily rescan, 6h URL checks, weekly reports (Mon 8am UTC)")
+    logger.info("Scheduler: started — daily rescan, 6h URL checks, weekly reports (Mon 8am), 12h lifetime expiry")

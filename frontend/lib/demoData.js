@@ -41,10 +41,10 @@ export const DEMO_ASSETS = [
   },
   {
     id: 'demo-asset-3',
-    filename: 'nba-finals-lebron-dunk.jpg',
+    filename: 'messi-argentina-world-cup-action.jpg',
     type: 'image',
     status: 'complete',
-    originalUrl: '/images/sportshield-logo-transparent.png',
+    originalUrl: '/images/demo-messi.jpg',
     matchCount: 4,
     unauthorizedCount: 2,
     authorizedCount: 2,

@@ -69,11 +69,11 @@ async def health_check():
     api_url = f"http://localhost:{port}"
     endpoints = [
         {"path": "/health", "method": "GET"},
-        {"path": "/api/media/list", "method": "GET"},
-        {"path": "/api/alerts/list", "method": "GET"},
-        {"path": "/api/gemini/chat", "method": "POST", "body": {"message": "ping"}},
+        {"path": "/api/media/assets", "method": "GET"},
+        {"path": "/api/alerts/", "method": "GET"},
         {"path": "/api/settings/trusted-domains", "method": "GET"},
         {"path": "/api/admin/user-stats", "method": "GET"},
+        {"path": "/api/reports/history?user_id=health_check", "method": "GET"},
     ]
     results = []
     async with httpx.AsyncClient(timeout=10) as client:
