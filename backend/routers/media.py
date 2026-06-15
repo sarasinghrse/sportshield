@@ -263,7 +263,14 @@ async def upload_media(file: UploadFile = File(...), userId: str = Form("demo_us
 
     # Step 1: Upload to Cloudinary (essential — must succeed)
     cloudinary_type = "video" if resource_type in ("video", "audio") else "image"
-    original_url = _get('services.cloudinary_client', 'upload_file')(file_bytes, asset_id, user_id, cloudinary_type)
+    try:
+        original_url = _get('services.cloudinary_client', 'upload_file')(file_bytes, asset_id, user_id, cloudinary_type)
+    except Exception as e:
+        print(f"[upload] Cloudinary upload failed for {resource_type}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Upload to media storage failed: {e}",
+        )
 
     # Step 2: Basic fingerprint only (lightweight)
     phash = ""

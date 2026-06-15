@@ -15,16 +15,25 @@ class AdminLogin(BaseModel):
     code: str
 
 
+def _credentials_ok(email: str, code: str) -> bool:
+    # Email is case-insensitive and whitespace-tolerant (autofill often adds
+    # trailing spaces or lowercases). The code stays exact, but trimmed.
+    return (
+        (email or "").strip().lower() == ADMIN_EMAIL.lower()
+        and (code or "").strip() == ADMIN_CODE
+    )
+
+
 @router.post("/login")
 async def admin_login(data: AdminLogin):
-    if data.email == ADMIN_EMAIL and data.code == ADMIN_CODE:
+    if _credentials_ok(data.email, data.code):
         return {"ok": True}
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 @router.post("/verify")
 async def admin_verify(data: AdminLogin):
-    if data.email == ADMIN_EMAIL and data.code == ADMIN_CODE:
+    if _credentials_ok(data.email, data.code):
         return {"ok": True}
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
