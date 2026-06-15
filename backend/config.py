@@ -17,3 +17,13 @@ BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "") # verified sender in yo
 TWILIO_ACCOUNT_SID    = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN     = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_FROM  = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")  # sandbox number (fixed)
+
+# ── GCP / Google Cloud (optional — each feature stays OFF until its flag is set) ──
+# Switching any of these back to the default restores the original free-tier path,
+# so a bad GCP rollout can be reverted with an env change (or `git revert`).
+STORAGE_BACKEND     = os.getenv("STORAGE_BACKEND", "cloudinary")        # cloudinary | gcs
+GCS_BUCKET          = os.getenv("GCS_BUCKET", "")                       # required when STORAGE_BACKEND=gcs
+EMBEDDINGS_BACKEND  = os.getenv("EMBEDDINGS_BACKEND", "clip")           # clip | vertex
+AI_DETECTOR_BACKEND = os.getenv("AI_DETECTOR_BACKEND", "huggingface")   # huggingface | vision
+GCP_PROJECT         = os.getenv("GCP_PROJECT", os.getenv("FIREBASE_PROJECT_ID", ""))
+GCP_LOCATION        = os.getenv("GCP_LOCATION", "us-central1")

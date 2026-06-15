@@ -2,7 +2,10 @@ import os
 import tempfile
 import cloudinary
 import cloudinary.uploader
-from config import CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+from config import (
+    CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
+    STORAGE_BACKEND,
+)
 
 cloudinary.config(
     cloud_name=CLOUDINARY_CLOUD_NAME,
@@ -19,6 +22,16 @@ _SUFFIX = {"video": ".mp4", "audio": ".mp3"}
 
 
 def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
+    # Optional Google Cloud Storage backend (STORAGE_BACKEND=gcs). Falls back
+    # to Cloudinary automatically if GCS upload fails, so a bad GCS config
+    # never breaks uploads.
+    if STORAGE_BACKEND == "gcs":
+        try:
+            from services.gcs_client import upload_file as gcs_upload
+            return gcs_upload(file_bytes, asset_id, user_id, resource_type)
+        except Exception as e:
+            print(f"[storage] GCS upload failed, falling back to Cloudinary: {e}")
+
     public_id = f"sportshield/{user_id}/{asset_id}"
 
     if resource_type in ("video", "audio") or len(file_bytes) > _LARGE_THRESHOLD:
