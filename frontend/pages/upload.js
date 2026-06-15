@@ -73,11 +73,24 @@ export default function UploadPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      const res = await fetch(`${API_URL}/api/media/upload`, { method: 'POST', body: formData });
+      let res;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        res = await fetch(`${API_URL}/api/media/upload`, { method: 'POST', body: formData });
+        if (res.status === 502 || res.status === 503) {
+          if (attempt === 0) {
+            toast('Server is waking up — retrying...', { icon: '⏳' });
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+          }
+        }
+        break;
+      }
       clearInterval(iv);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Server error ${res.status}`);
+        throw new Error(res.status === 502 || res.status === 503
+          ? 'Server is starting up. Please wait a moment and try again.'
+          : (body.detail || `Server error ${res.status}`));
       }
       const data = await res.json();
       setUploadProgress(100);

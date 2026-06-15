@@ -261,140 +261,45 @@ async def upload_media(file: UploadFile = File(...)):
     asset_id = str(uuid.uuid4())
     user_id  = "demo_user"
 
+    # Step 1: Upload to Cloudinary (essential — must succeed)
     cloudinary_type = "video" if resource_type in ("video", "audio") else "image"
     original_url = _get('services.cloudinary_client', 'upload_file')(file_bytes, asset_id, user_id, cloudinary_type)
 
+    # Step 2: Basic fingerprint only (lightweight)
     phash = ""
-    pdq_data = None
-    watermarked_url = ""
-    invisible_wm_url = ""
-    forensic_wm_url = ""
-    forensic_wm_meta = None
-    video_fingerprint = None
-    music_analysis = None
-    c2pa_data = None
-    clip_data = None
-
-    # S13: Music detection for audio and video files
-    if resource_type in ("audio", "video"):
-        try:
-            music_analysis = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, file.filename or "")
-            print(f"[music] Detection: {music_analysis.get('summary', 'N/A')}")
-        except Exception as e:
-            print(f"[music] Detection failed: {e}")
-
     if resource_type == "image":
-        phash = _get('services.fingerprint', 'compute_phash')(file_bytes)
-
-        # ── Phase 1: Meta PDQ hash (production-grade, replaces pHash as primary) ──
         try:
-            pdq_data = _get('services.pdq_hasher', 'compute_pdq')(file_bytes)
-            print(f"[pdq] Hash: {pdq_data['hash'][:16]}... quality={pdq_data['quality']}")
+            phash = _get('services.fingerprint', 'compute_phash')(file_bytes)
         except Exception as e:
-            print(f"[pdq] Failed: {e}")
-
-        # ── Phase 1: CLIP vector indexing (semantic search) ──
-        try:
-            clip_data = _get('services.clip_search', 'index_asset')(asset_id, user_id, file_bytes, file.filename or "")
-            if clip_data.get("indexed"):
-                print(f"[clip] Indexed {clip_data['dimensions']}-dim vector")
-        except Exception as e:
-            print(f"[clip] Indexing failed: {e}")
-
-        # Visible watermark (existing S2)
-        try:
-            wm_bytes = _get('services.watermark', 'apply_visible_watermark')(
-                file_bytes,
-                user_email=f"{user_id}@sportshield",
-                session_id=asset_id,
-                asset_id=asset_id,
-            )
-            watermarked_url = _get('services.cloudinary_client', 'upload_file')(wm_bytes, f"{asset_id}_wm", user_id, "image")
-        except Exception as e:
-            print(f"[watermark] could not generate watermarked copy: {e}")
-
-        # S5: Invisible watermark (LSB steganography — kept as fallback)
-        try:
-            inv_bytes = _get('services.invisible_watermark', 'embed_watermark')(file_bytes, user_id=user_id, asset_id=asset_id)
-            invisible_wm_url = _get('services.cloudinary_client', 'upload_file')(inv_bytes, f"{asset_id}_inv", user_id, "image")
-            print(f"[invisible_wm] LSB embedded for asset {asset_id[:8]}")
-        except Exception as e:
-            print(f"[invisible_wm] Failed: {e}")
-
-        # ── Phase 1: DCT forensic watermark (survives re-compression/screenshots) ──
-        try:
-            fw_result = _get('services.forensic_watermark', 'embed_forensic_watermark')(
-                file_bytes, user_id=user_id, asset_id=asset_id,
-                session_id=asset_id,
-            )
-            fw_bytes = fw_result.pop("watermarked_bytes")
-            forensic_wm_url = _get('services.cloudinary_client', 'upload_file')(fw_bytes, f"{asset_id}_fwm", user_id, "image")
-            forensic_wm_meta = fw_result
-            print(f"[forensic_wm] DCT embedded: {fw_result['bits_embedded']} bits, session={fw_result['session_id'][:8]}")
-        except Exception as e:
-            print(f"[forensic_wm] Failed: {e}")
-
+            print(f"[phash] Failed: {e}")
     elif resource_type == "video":
         try:
-            video_fingerprint = _get('services.video_fingerprint', 'compute_video_fingerprint')(file_bytes, max_frames=12)
-            phash = video_fingerprint.get("primaryHash", "")
-            print(f"[video] Extracted {video_fingerprint['frameCount']} frames, primary hash: {phash}")
+            vfp = _get('services.video_fingerprint', 'compute_video_fingerprint')(file_bytes, max_frames=12)
+            phash = vfp.get("primaryHash", "")
+            print(f"[video] Extracted {vfp['frameCount']} frames")
         except Exception as e:
             print(f"[video] Fingerprinting failed: {e}")
+            vfp = None
 
-    # ── Phase 1: C2PA Content Credential signing ──
-    if resource_type == "image":
-        try:
-            c2pa_result = _get('services.c2pa_credentials', 'sign_asset')(
-                file_bytes, user_id, asset_id,
-                file.filename or "", file.content_type or "image/png",
-            )
-            if c2pa_result.get("signed"):
-                c2pa_signed_bytes = c2pa_result.pop("manifest_bytes")
-                c2pa_url = _get('services.cloudinary_client', 'upload_file')(c2pa_signed_bytes, f"{asset_id}_c2pa", user_id, "image")
-                c2pa_data = {
-                    "signed": True,
-                    "c2paUrl": c2pa_url,
-                    "claimGenerator": c2pa_result.get("claim_generator"),
-                    "signedAt": c2pa_result.get("signed_at"),
-                    "algorithm": c2pa_result.get("algorithm"),
-                    "standard": c2pa_result.get("standard"),
-                }
-                print(f"[c2pa] Content Credential signed: {c2pa_data['algorithm']}")
-            else:
-                print(f"[c2pa] Signing skipped: {c2pa_result.get('error', 'unknown')}")
-        except Exception as e:
-            print(f"[c2pa] Failed: {e}")
-
+    # Step 3: Save to Firestore immediately so asset appears in dashboard
     asset_doc = {
         "userId":           user_id,
         "filename":         file.filename,
         "originalUrl":      original_url,
-        "watermarkedUrl":   watermarked_url,
-        "invisibleWmUrl":   invisible_wm_url,
-        "forensicWmUrl":    forensic_wm_url,
+        "watermarkedUrl":   "",
+        "invisibleWmUrl":   "",
+        "forensicWmUrl":    "",
         "type":             resource_type,
         "phash":            phash,
         "uploadedAt":       datetime.now(timezone.utc),
-        "status":         "pending",
-        "scanCount":      0,
-        "matchCount":     0,
-        "source":         "upload",
+        "status":           "processing",
+        "scanCount":        0,
+        "matchCount":       0,
+        "source":           "upload",
     }
-    if pdq_data:
-        asset_doc["pdqHash"] = pdq_data
-    if clip_data:
-        asset_doc["clipIndex"] = clip_data
-    if forensic_wm_meta:
-        asset_doc["forensicWatermark"] = forensic_wm_meta
-    if c2pa_data:
-        asset_doc["c2pa"] = c2pa_data
-    if video_fingerprint:
-        asset_doc["videoFingerprint"] = video_fingerprint
-    if music_analysis:
-        asset_doc["musicAnalysis"] = music_analysis
+    if resource_type == "video" and phash:
+        asset_doc["videoFingerprint"] = vfp
 
-    # S11: Create ownership proof on upload (legacy — now supplemented by C2PA)
     try:
         proof = _get('services.blockchain_timestamp', 'create_ownership_proof')(file_bytes, asset_id, user_id, file.filename or "", phash)
         asset_doc["ownershipProof"] = proof
@@ -403,20 +308,14 @@ async def upload_media(file: UploadFile = File(...)):
 
     db.collection("assets").document(asset_id).set(asset_doc)
 
-    if resource_type == "image":
-        t = threading.Thread(
-            target=run_scan,
-            args=(asset_id, user_id, phash, original_url, file_bytes),
-        )
-        t.daemon = True
-        t.start()
-    elif resource_type == "video" and phash:
-        t = threading.Thread(
-            target=run_video_scan,
-            args=(asset_id, user_id, video_fingerprint, original_url),
-        )
-        t.daemon = True
-        t.start()
+    # Step 4: Offload heavy processing to background thread
+    # (watermarks, PDQ, CLIP, C2PA, music detection, scanning)
+    t = threading.Thread(
+        target=_post_upload_processing,
+        args=(asset_id, user_id, file_bytes, resource_type, phash, original_url, file.filename or "", content_type),
+        daemon=True,
+    )
+    t.start()
 
     return {
         "id":             asset_id,
@@ -424,10 +323,125 @@ async def upload_media(file: UploadFile = File(...)):
         "filename":       file.filename,
         "url":            original_url,
         "originalUrl":    original_url,
-        "watermarkedUrl": watermarked_url,
+        "watermarkedUrl": "",
         "phash":          phash,
-        "status":         "pending",
+        "status":         "processing",
     }
+
+
+def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash, original_url, filename, content_type):
+    """Heavy processing that runs in a background thread after upload returns."""
+    import gc
+    updates = {}
+
+    try:
+        if resource_type in ("audio", "video"):
+            try:
+                music_analysis = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, filename)
+                updates["musicAnalysis"] = music_analysis
+                print(f"[music] Detection: {music_analysis.get('summary', 'N/A')}")
+            except Exception as e:
+                print(f"[music] Detection failed: {e}")
+
+        if resource_type == "image":
+            # PDQ hash
+            try:
+                pdq_data = _get('services.pdq_hasher', 'compute_pdq')(file_bytes)
+                updates["pdqHash"] = pdq_data
+                print(f"[pdq] Hash: {pdq_data['hash'][:16]}... quality={pdq_data['quality']}")
+            except Exception as e:
+                print(f"[pdq] Failed: {e}")
+            gc.collect()
+
+            # Visible watermark
+            try:
+                wm_bytes = _get('services.watermark', 'apply_visible_watermark')(
+                    file_bytes, user_email=f"{user_id}@sportshield",
+                    session_id=asset_id, asset_id=asset_id,
+                )
+                wm_url = _get('services.cloudinary_client', 'upload_file')(wm_bytes, f"{asset_id}_wm", user_id, "image")
+                updates["watermarkedUrl"] = wm_url
+                del wm_bytes
+            except Exception as e:
+                print(f"[watermark] Failed: {e}")
+            gc.collect()
+
+            # Invisible watermark
+            try:
+                inv_bytes = _get('services.invisible_watermark', 'embed_watermark')(file_bytes, user_id=user_id, asset_id=asset_id)
+                inv_url = _get('services.cloudinary_client', 'upload_file')(inv_bytes, f"{asset_id}_inv", user_id, "image")
+                updates["invisibleWmUrl"] = inv_url
+                del inv_bytes
+                print(f"[invisible_wm] LSB embedded for asset {asset_id[:8]}")
+            except Exception as e:
+                print(f"[invisible_wm] Failed: {e}")
+            gc.collect()
+
+            # Forensic watermark
+            try:
+                fw_result = _get('services.forensic_watermark', 'embed_forensic_watermark')(
+                    file_bytes, user_id=user_id, asset_id=asset_id, session_id=asset_id,
+                )
+                fw_bytes = fw_result.pop("watermarked_bytes")
+                fw_url = _get('services.cloudinary_client', 'upload_file')(fw_bytes, f"{asset_id}_fwm", user_id, "image")
+                updates["forensicWmUrl"] = fw_url
+                updates["forensicWatermark"] = fw_result
+                del fw_bytes
+                print(f"[forensic_wm] DCT embedded: {fw_result['bits_embedded']} bits")
+            except Exception as e:
+                print(f"[forensic_wm] Failed: {e}")
+            gc.collect()
+
+            # CLIP indexing
+            try:
+                clip_data = _get('services.clip_search', 'index_asset')(asset_id, user_id, file_bytes, filename)
+                if clip_data.get("indexed"):
+                    updates["clipIndex"] = clip_data
+                    print(f"[clip] Indexed {clip_data['dimensions']}-dim vector")
+            except Exception as e:
+                print(f"[clip] Indexing failed: {e}")
+            gc.collect()
+
+            # C2PA signing
+            try:
+                c2pa_result = _get('services.c2pa_credentials', 'sign_asset')(
+                    file_bytes, user_id, asset_id, filename, content_type or "image/png",
+                )
+                if c2pa_result.get("signed"):
+                    c2pa_signed_bytes = c2pa_result.pop("manifest_bytes")
+                    c2pa_url = _get('services.cloudinary_client', 'upload_file')(c2pa_signed_bytes, f"{asset_id}_c2pa", user_id, "image")
+                    updates["c2pa"] = {
+                        "signed": True, "c2paUrl": c2pa_url,
+                        "claimGenerator": c2pa_result.get("claim_generator"),
+                        "signedAt": c2pa_result.get("signed_at"),
+                        "algorithm": c2pa_result.get("algorithm"),
+                        "standard": c2pa_result.get("standard"),
+                    }
+                    del c2pa_signed_bytes
+                    print(f"[c2pa] Content Credential signed")
+            except Exception as e:
+                print(f"[c2pa] Failed: {e}")
+            gc.collect()
+
+        # Update Firestore with all processed data
+        updates["status"] = "pending"
+        db.collection("assets").document(asset_id).update(updates)
+        print(f"[upload] Background processing complete for {asset_id[:8]}")
+
+        # Start scan
+        if resource_type == "image" and phash:
+            run_scan(asset_id, user_id, phash, original_url, file_bytes)
+        elif resource_type == "video" and phash:
+            vfp_doc = db.collection("assets").document(asset_id).get().to_dict().get("videoFingerprint")
+            if vfp_doc:
+                run_video_scan(asset_id, user_id, vfp_doc, original_url)
+
+    except Exception as e:
+        print(f"[upload] Background processing error: {e}")
+        try:
+            db.collection("assets").document(asset_id).update({"status": "pending"})
+        except Exception:
+            pass
 
 
 # ── Social / web URL scan endpoint ──────────────────────────────────────────
