@@ -3,7 +3,7 @@ Weekly Protection Report Generator — powered by Google Gemini + Firebase.
 
 Queries Firestore for the past week's activity, computes stats,
 calls Gemini 2.0 Flash for a narrative summary, stores the report,
-and optionally emails it via Brevo.
+and optionally emails it via Gmail SMTP.
 """
 
 import os

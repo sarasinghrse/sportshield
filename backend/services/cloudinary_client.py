@@ -36,9 +36,15 @@ def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
 
     if resource_type in ("video", "audio") or len(file_bytes) > _LARGE_THRESHOLD:
         # upload_large is most reliable with a real file path, so stage the
-        # bytes to a temp file and chunk-upload from there.
-        tmp = tempfile.NamedTemporaryFile(suffix=_SUFFIX.get(resource_type, ""), delete=False)
+        # bytes to a temp file and chunk-upload from there.  On Cloud Run the
+        # writable filesystem is limited to /tmp, so we force the temp dir.
+        tmp_dir = "/tmp" if os.path.isdir("/tmp") else None
         try:
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=_SUFFIX.get(resource_type, ""),
+                dir=tmp_dir,
+                delete=False,
+            )
             tmp.write(file_bytes)
             tmp.flush()
             tmp.close()
@@ -47,6 +53,14 @@ def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
                 public_id=public_id,
                 resource_type=resource_type,
                 chunk_size=6_000_000,
+            )
+        except OSError:
+            # Temp file creation failed (read-only FS) — fall back to
+            # in-memory upload which works for files under ~100 MB.
+            result = cloudinary.uploader.upload(
+                file_bytes,
+                public_id=public_id,
+                resource_type=resource_type,
             )
         finally:
             try:

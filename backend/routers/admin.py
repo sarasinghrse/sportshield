@@ -62,7 +62,11 @@ async def mark_message_read(message_id: str):
 
 @router.get("/health-check")
 async def health_check():
-    api_url = os.getenv("API_BASE_URL", "https://sportshield-api-117814433634.us-central1.run.app")
+    # Use localhost for self-checks to avoid the container calling itself via
+    # the external Cloud Run URL, which can timeout due to request concurrency
+    # limits or the single-request-per-container default.
+    port = os.getenv("PORT", "8000")
+    api_url = f"http://localhost:{port}"
     endpoints = [
         {"path": "/health", "method": "GET"},
         {"path": "/api/media/list", "method": "GET"},
@@ -72,26 +76,27 @@ async def health_check():
         {"path": "/api/admin/user-stats", "method": "GET"},
     ]
     results = []
-    for ep in endpoints:
-        try:
-            kwargs = {"timeout": 10}
-            if ep.get("body"):
-                kwargs["json"] = ep["body"]
-                kwargs["headers"] = {"Content-Type": "application/json"}
-            resp = httpx.request(ep["method"], f"{api_url}{ep['path']}", **kwargs)
-            results.append({
-                "endpoint": f"{ep['method']} {ep['path']}",
-                "status": resp.status_code,
-                "ok": resp.status_code < 400,
-                "latency_ms": int(resp.elapsed.total_seconds() * 1000),
-            })
-        except Exception as e:
-            results.append({
-                "endpoint": f"{ep['method']} {ep['path']}",
-                "status": 0,
-                "ok": False,
-                "error": str(e),
-            })
+    async with httpx.AsyncClient(timeout=10) as client:
+        for ep in endpoints:
+            try:
+                kwargs = {}
+                if ep.get("body"):
+                    kwargs["json"] = ep["body"]
+                    kwargs["headers"] = {"Content-Type": "application/json"}
+                resp = await client.request(ep["method"], f"{api_url}{ep['path']}", **kwargs)
+                results.append({
+                    "endpoint": f"{ep['method']} {ep['path']}",
+                    "status": resp.status_code,
+                    "ok": resp.status_code < 400,
+                    "latency_ms": int(resp.elapsed.total_seconds() * 1000),
+                })
+            except Exception as e:
+                results.append({
+                    "endpoint": f"{ep['method']} {ep['path']}",
+                    "status": 0,
+                    "ok": False,
+                    "error": str(e),
+                })
     return {"ok": True, "results": results}
 
 

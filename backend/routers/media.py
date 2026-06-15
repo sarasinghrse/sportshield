@@ -249,7 +249,11 @@ def run_video_scan(asset_id, user_id, video_fp, original_url):
 # ── Upload endpoint ──────────────────────────────────────────────────────────
 
 @router.post("/upload")
-async def upload_media(file: UploadFile = File(...), userId: str = Form("demo_user")):
+async def upload_media(
+    file: UploadFile = File(...),
+    userId: str = Form("demo_user"),
+    sendEmailUpdates: str = Form("false"),
+):
     file_bytes = await file.read()
     content_type = file.content_type or ""
     is_audio = content_type.startswith("audio")
@@ -315,11 +319,49 @@ async def upload_media(file: UploadFile = File(...), userId: str = Form("demo_us
 
     db.collection("assets").document(asset_id).set(asset_doc)
 
+    # Send upload confirmation email if user opted in
+    wants_email = sendEmailUpdates.lower() == "true"
+    if wants_email:
+        try:
+            user_doc = db.collection("users").document(user_id).get()
+            if user_doc.exists:
+                user_email = user_doc.to_dict().get("email") or user_doc.to_dict().get("alertEmail", "")
+                if user_email:
+                    from services.email_alerts import send_email
+                    send_email(
+                        user_email,
+                        f"Your asset \"{file.filename}\" was uploaded successfully",
+                        f"""
+                        <div style="background:#0a1f0a;padding:0;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+                          <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
+                            <div style="text-align:center;margin-bottom:24px;">
+                              <h1 style="color:#4ade80;font-size:22px;font-weight:900;letter-spacing:0.08em;margin:0;">SPORTSHIELD</h1>
+                            </div>
+                            <div style="background:#0d2a0d;border:1px solid rgba(26,92,26,0.4);border-radius:12px;padding:24px;">
+                              <h2 style="color:#fff;font-size:16px;margin:0 0 12px;">Asset Uploaded Successfully</h2>
+                              <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;">
+                                Your asset <strong style="color:#fff;">{file.filename}</strong> has been uploaded
+                                and is now being processed. We'll scan it for unauthorized copies automatically.
+                              </p>
+                              <div style="text-align:center;margin-top:20px;">
+                                <a href="https://sportshield.app/assets/{asset_id}"
+                                   style="display:inline-block;background:#1a5c1a;color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;padding:10px 28px;border-radius:8px;border:1px solid rgba(74,222,128,0.3);">
+                                  View Asset
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        """,
+                    )
+        except Exception as e:
+            print(f"[upload_email] Failed to send upload confirmation: {e}")
+
     # Step 4: Offload heavy processing to background thread
     # (watermarks, PDQ, CLIP, C2PA, music detection, scanning)
     t = threading.Thread(
         target=_post_upload_processing,
-        args=(asset_id, user_id, file_bytes, resource_type, phash, original_url, file.filename or "", content_type),
+        args=(asset_id, user_id, file_bytes, resource_type, phash, original_url, file.filename or "", content_type, wants_email),
         daemon=True,
     )
     t.start()
@@ -336,7 +378,7 @@ async def upload_media(file: UploadFile = File(...), userId: str = Form("demo_us
     }
 
 
-def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash, original_url, filename, content_type):
+def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash, original_url, filename, content_type, wants_email=False):
     """Heavy processing that runs in a background thread after upload returns."""
     import gc
     updates = {}
@@ -432,6 +474,8 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
 
         # Update Firestore with all processed data
         updates["status"] = "pending"
+        if wants_email:
+            updates["emailUpdates"] = True
         db.collection("assets").document(asset_id).update(updates)
         print(f"[upload] Background processing complete for {asset_id[:8]}")
 
