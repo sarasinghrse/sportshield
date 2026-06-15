@@ -1,0 +1,40 @@
+# Firebase App Hosting config for the Next.js frontend.
+# App Hosting builds this app and serves SSR on Cloud Run behind Firebase Hosting.
+# When you create the App Hosting backend in the console, set the app root to
+# "frontend" so this file is picked up.
+#
+# Fill the values below from frontend/.env.local (these NEXT_PUBLIC_* values are
+# public client config, not secrets). Point NEXT_PUBLIC_API_URL at your Cloud
+# Run backend URL.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  cpu: 1
+  memoryMiB: 512
+  concurrency: 80
+
+env:
+  - variable: NEXT_PUBLIC_API_URL
+    value: https://REPLACE-with-cloud-run-backend-url
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: REPLACE
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: sportshield-app.firebaseapp.com
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: sportshield-app
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: REPLACE
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: REPLACE
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: REPLACE
+    availability: [BUILD, RUNTIME]
