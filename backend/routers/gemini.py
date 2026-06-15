@@ -30,11 +30,16 @@ ADVANCED FEATURES:
 - WhatsApp Alerts: Get piracy notifications on your phone
 - War Room Dashboard: Live monitoring of all detection and enforcement activity
 
-PAGES:
-- Dashboard (/) — overview of protected assets, alerts, risk scores
-- Community (/community) — public assets, leaderboard
-- War Room (/radar) — live radar, enforcement, crowd network, public API docs
-- Settings (/settings) — account preferences
+PAGES (use the exact page_name in parentheses with trigger_navigation):
+- Dashboard (dashboard) — overview of protected assets, alerts, risk scores
+- Upload (upload) — upload and protect a new image or video
+- Alerts (alerts) — piracy alerts with AI summaries and DMCA actions
+- Analytics (analytics) — violation trends and platform breakdown
+- Reports (reports) — weekly AI protection reports
+- War Room / Live Radar (war_room) — live radar, enforcement, crowd network
+- Community (community) — public assets and community feed
+- Settings (settings) — account preferences
+- Verify (verify) — public URL/asset verification tool
 
 You have tools to access Live Radar Statistics and trigger page navigation.
 If a user explicitly asks to go to a page or you feel taking them to a page is the best way to help them, use the trigger_navigation tool.
@@ -59,7 +64,7 @@ def _get_tools():
 
     @tool
     def trigger_navigation(page_name: str) -> str:
-        """Triggers navigation to a specific page on the frontend. Use this ONLY when the user explicitly asks to be taken to a page. Valid inputs: 'dashboard', 'war_room', 'community', 'settings'."""
+        """Triggers navigation to a specific page on the frontend. Use this when the user asks to go to / open / take me to a page. Valid inputs: 'dashboard', 'upload', 'alerts', 'analytics', 'reports', 'war_room', 'community', 'settings', 'verify'."""
         return f"NAVIGATE_TO:{page_name}"
 
     return [get_dashboard_stats, trigger_navigation]
@@ -121,9 +126,15 @@ async def chat(req: ChatRequest):
 
         page_map = {
             "dashboard": "/",
+            "upload": "/upload",
+            "alerts": "/alerts",
+            "analytics": "/analytics",
+            "reports": "/reports",
             "war_room": "/radar",
-            "community": "/community",
-            "settings": "/settings"
+            "radar": "/radar",
+            "community": "/public-dashboard",
+            "settings": "/settings",
+            "verify": "/verify",
         }
 
         if navigate_to and navigate_to in page_map:
