@@ -187,7 +187,7 @@ def build_report_email_html(report: dict) -> str:
         <p style="color: #d4e8d4; font-size: 0.88rem; line-height: 1.7; white-space: pre-line; margin: 0;">{report['narrative']}</p>
       </div>
       <div style="text-align: center; margin-top: 24px;">
-        <a href="https://sportshield.app/reports" style="display: inline-block; background: #1a5c1a; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">View Full Report</a>
+        <a href="{os.getenv('FRONTEND_URL', 'https://sportshield--sportshield-app.us-central1.hosted.app')}/reports" style="display: inline-block; background: #1a5c1a; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">View Full Report</a>
       </div>
     </div>
     """

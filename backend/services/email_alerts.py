@@ -101,7 +101,7 @@ def build_alert_email(asset_name: str, match_count: int, unauthorized_count: int
           {matches_table}
 
           <div style="text-align:center;margin-top:20px;">
-            <a href="https://sportshield.app/assets/{asset_id}" style="display:inline-block;background:#1a5c1a;color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;padding:10px 28px;border-radius:8px;border:1px solid rgba(74,222,128,0.3);">
+            <a href="{os.getenv('FRONTEND_URL', 'https://sportshield--sportshield-app.us-central1.hosted.app')}/assets/{asset_id}" style="display:inline-block;background:#1a5c1a;color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;padding:10px 28px;border-radius:8px;border:1px solid rgba(74,222,128,0.3);">
               View Asset Details
             </a>
           </div>

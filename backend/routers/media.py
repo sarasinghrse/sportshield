@@ -344,7 +344,7 @@ async def upload_media(
                                 and is now being processed. We'll scan it for unauthorized copies automatically.
                               </p>
                               <div style="text-align:center;margin-top:20px;">
-                                <a href="https://sportshield.app/assets/{asset_id}"
+                                <a href="{os.getenv('FRONTEND_URL', 'https://sportshield--sportshield-app.us-central1.hosted.app')}/assets/{asset_id}"
                                    style="display:inline-block;background:#1a5c1a;color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;padding:10px 28px;border-radius:8px;border:1px solid rgba(74,222,128,0.3);">
                                   View Asset
                                 </a>
