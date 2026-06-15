@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
+      <main className="app-main">
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 28 }}>
+        <div className="grid-5" style={{ gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Violations',  value: totalViolations,    accent: 'rgba(239,68,68,0.18)' },
             { label: 'Assets Monitored', value: assetsMonitored,    accent: 'rgba(26,92,26,0.28)'  },
@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="grid-2" style={{ gap: 20 }}>
           {/* Platform breakdown */}
           <div className="ap-chart-card">
             <div className="ap-chart-title">Platform Breakdown</div>

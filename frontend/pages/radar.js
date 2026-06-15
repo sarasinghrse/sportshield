@@ -370,7 +370,7 @@ export default function RadarPage() {
               {tab === 'radar' && (
                 <div>
                   {/* Stats */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+                  <div className="grid-4" style={{ gap: 14, marginBottom: 24 }}>
                     {[
                       { label: 'Active Events',     value: stats?.active_events || 0,           color: C.greenLight },
                       { label: 'Suspects Analyzed',  value: stats?.total_suspects_analyzed || 0, color: C.blue },
@@ -395,7 +395,7 @@ export default function RadarPage() {
                     <div className="wr-card" style={{ padding: 24, marginBottom: 20, border: `1px solid rgba(60,170,60,0.3)` }}>
                       <h3 className="wr-section-title" style={{ marginBottom: 6 }}>Monitor a Stream</h3>
                       <p style={{ color: C.muted, fontSize: '0.78rem', margin: '0 0 16px' }}>Enter your stream details and we'll scan the web for unauthorized re-streams and clips.</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="grid-2" style={{ gap: 10 }}>
                         <input className="wr-input" placeholder="Event name (e.g. Arsenal vs Chelsea — Premier League Matchweek 28)" value={eventForm.eventName} onChange={e => setEventForm({ ...eventForm, eventName: e.target.value })} />
                         <input className="wr-input" placeholder="Teams (comma separated, e.g. Arsenal, Chelsea)" value={eventForm.teams} onChange={e => setEventForm({ ...eventForm, teams: e.target.value })} />
                         <input className="wr-input" placeholder="Broadcasters (e.g. Sky Sports(UK), NBC(US), StarSports(India))" value={eventForm.broadcaster} onChange={e => setEventForm({ ...eventForm, broadcaster: e.target.value })} style={{ gridColumn: '1 / -1' }} />
@@ -431,7 +431,7 @@ export default function RadarPage() {
                           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.1rem', color: analysisResult.is_pirate ? C.red : C.greenLight, marginBottom: 10 }}>
                             {analysisResult.verdict === 'PIRATE_STREAM_DETECTED' ? 'PIRATE DETECTED' : analysisResult.verdict === 'SUSPICIOUS' ? 'SUSPICIOUS' : 'CLEAN'}
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          <div className="grid-3" style={{ gap: 8 }}>
                             <div className="wr-card" style={{ padding: '10px 14px', textAlign: 'center' }}>
                               <div style={{ fontSize: '0.7rem', color: C.muted, marginBottom: 2 }}>Composite</div>
                               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.3rem', color: C.orange }}>{(analysisResult.composite_score * 100).toFixed(1)}%</div>
@@ -571,7 +571,7 @@ export default function RadarPage() {
               {/* ═══ TAB: ENFORCEMENT ═══ */}
               {tab === 'enforce' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+                  <div className="grid-4" style={{ gap: 14, marginBottom: 24 }}>
                     {[
                       { label: 'Total Cases',  value: enforcementStats?.total_cases || 0,    color: C.blue },
                       { label: 'Active',        value: enforcementStats?.active_cases || 0,   color: C.orange },
@@ -622,7 +622,7 @@ export default function RadarPage() {
               {/* ═══ TAB: CROWD NETWORK ═══ */}
               {tab === 'crowd' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+                  <div className="grid-4" style={{ gap: 14, marginBottom: 24 }}>
                     {[
                       { label: 'Contributors',    value: crowdStats?.total_contributors || 0, color: C.purple },
                       { label: 'Submissions',      value: crowdStats?.total_submissions || 0,  color: C.blue },

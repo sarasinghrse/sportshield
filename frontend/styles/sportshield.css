@@ -1485,6 +1485,103 @@ img, video, iframe, svg { max-width: 100%; }
 /* ── Ensure all grids collapse safely ── */
 [style*="grid-template-columns"] { min-width: 0; }
 
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE GRID UTILITIES — used by app pages
+   Apply className alongside inline style; media queries
+   override the inline gridTemplateColumns with !important.
+   ══════════════════════════════════════════════════════════ */
+.grid-2   { display: grid; grid-template-columns: 1fr 1fr; }
+.grid-3   { display: grid; grid-template-columns: repeat(3, 1fr); }
+.grid-4   { display: grid; grid-template-columns: repeat(4, 1fr); }
+.grid-5   { display: grid; grid-template-columns: repeat(5, 1fr); }
+
+/* Dashboard nav: hide links on mobile, stack properly */
+.db-nav-links-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+
+/* URL watchlist form row */
+.db-watch-form { display: flex; gap: 8px; }
+
+/* Main content container */
+.app-main { max-width: 1060px; margin: 0 auto; padding: 32px 24px; }
+
+/* ── Tablet (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .grid-5 { grid-template-columns: repeat(3, 1fr) !important; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+  .db-nav-links-wrap .db-nav-link { font-size: 0.78rem; padding: 6px 8px; }
+}
+
+/* ── Mobile (≤ 640px) ── */
+@media (max-width: 640px) {
+  .grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-3 { grid-template-columns: 1fr !important; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+
+  /* Dashboard nav: hide text links, keep upload + avatar + bell */
+  .db-nav-links-wrap .db-nav-link { display: none; }
+  .db-nav-links-wrap { gap: 4px; }
+  .db-nav { padding: 0 12px !important; }
+  .db-logo-text { font-size: 1rem; }
+
+  /* Main content less padding */
+  .app-main { padding: 20px 14px !important; }
+
+  /* URL watchlist form stacks */
+  .db-watch-form { flex-direction: column !important; }
+  .db-watch-form input { width: 100% !important; flex: unset !important; }
+  .db-watch-form button { width: 100% !important; }
+
+  /* Protection score card: stack vertically */
+  .db-protection-card { flex-direction: column !important; text-align: center; gap: 16px !important; }
+  .db-protection-card > div:last-child { align-items: center; }
+  .db-protection-card .db-protection-actions { justify-content: center; }
+
+  /* Alert rows: tighter */
+  .db-alert-row { flex-direction: column; align-items: flex-start !important; gap: 10px !important; padding: 12px 14px !important; }
+  .db-alert-row .db-dismiss-btn { align-self: flex-end; }
+
+  /* Stat values smaller on mobile */
+  .db-stat-value { font-size: 1.8rem !important; }
+
+  /* Table: horizontal scroll wrapper */
+  .db-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .db-table-wrap table { min-width: 600px; }
+
+  /* Cards tighter padding */
+  .db-card { padding: 16px !important; }
+
+  /* Upload btn smaller */
+  .db-upload-btn { font-size: 0.75rem; padding: 7px 14px; }
+
+  /* App page nav links */
+  .ap-nav { padding: 0 12px !important; }
+  .ap-nav-link { display: none !important; }
+
+  /* Section titles */
+  .db-section-title { font-size: 1.05rem; }
+}
+
+/* ── Small mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .grid-5 { grid-template-columns: 1fr 1fr !important; }
+  .grid-4 { grid-template-columns: 1fr 1fr !important; }
+  .grid-3 { grid-template-columns: 1fr !important; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+
+  .db-logo-text { display: none; }
+  .app-main { padding: 16px 10px !important; }
+
+  .db-stat-value { font-size: 1.5rem !important; }
+}
+
+/* ── Extra small (≤ 360px) ── */
+@media (max-width: 360px) {
+  .grid-4 { grid-template-columns: 1fr !important; }
+  .grid-5 { grid-template-columns: 1fr !important; }
+}
+
 /* Keyframes (global) */
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 @keyframes spin  { to { transform: rotate(360deg); } }

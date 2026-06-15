@@ -119,7 +119,7 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                   <h3 className="ap-section-title" style={{ marginBottom: 4 }}>Send us a message</h3>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="grid-2" style={{ gap: 14 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Name</label>
                       <input type="text" required placeholder="Your name" value={form.name}

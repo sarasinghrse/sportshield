@@ -304,7 +304,7 @@ export default function UploadPage() {
               </div>
 
               {/* Scan Rate & Asset Lifetime */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 16 }}>
+              <div className="grid-2" style={{ gap: 14, marginTop: 16 }}>
                 <div className="ap-card" style={{ padding: '16px 18px' }}>
                   <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.82rem', color: '#fff', marginBottom: 8 }}>Scan Rate</p>
                   <select value={scanRate} onChange={e => setScanRate(e.target.value)} className="ap-input" style={{ cursor: 'pointer', fontSize: '0.82rem' }}>
@@ -407,7 +407,7 @@ export default function UploadPage() {
         )}
 
         {/* How it works mini */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginTop: 28 }}>
+        <div className="grid-3" style={{ gap: 14, marginTop: 28 }}>
           {[
             { title: 'Fingerprinted', desc: 'A pHash is generated — robust to compression, resizing, and cropping.', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> },
             { title: 'Scanned', desc: 'We search the web for unauthorized copies using reverse image search + AI.', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },

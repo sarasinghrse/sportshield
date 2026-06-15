@@ -83,7 +83,7 @@ export default function PublicDashboard() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 36 }}>
+        <div className="grid-5" style={{ gap: 14, marginBottom: 36 }}>
           {[
             { label: 'Community Score',    value: `${communityScore}%`, accent: communityScore >= 70 ? 'rgba(74,222,128,0.2)' : 'rgba(245,158,11,0.2)' },
             { label: 'Assets Monitored',   value: assets.length,     accent: 'rgba(26,92,26,0.3)' },
@@ -234,7 +234,7 @@ export default function PublicDashboard() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', marginBottom: 24 }}>
               Community Analytics
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div className="grid-2" style={{ gap: 20 }}>
               <div className="ap-card" style={{ padding: 24 }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
                   Violations by Platform
@@ -265,7 +265,7 @@ export default function PublicDashboard() {
                 <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
                   Protection Overview
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="grid-2" style={{ gap: 14 }}>
                   <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.06)', borderRadius: 10, border: '1px solid rgba(74,222,128,0.15)' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#4ade80' }}>{assets.length - violatedAssets}</div>
                     <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Clean Assets</div>

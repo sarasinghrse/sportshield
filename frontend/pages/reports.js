@@ -125,7 +125,7 @@ export default function ReportsPage() {
           ) : (
             <>
               {/* Stats Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+              <div className="grid-4" style={{ gap: 14, marginBottom: 24 }}>
                 {[
                   { label: 'Matches Found', value: s.newMatches, color: '#f87171' },
                   { label: 'Alerts Triggered', value: s.alertsTriggered, color: '#fbbf24' },

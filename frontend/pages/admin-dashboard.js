@@ -250,7 +250,7 @@ export default function AdminDashboard() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
+      <main className="app-main">
 
         {/* ═══════════════════ COMMUNITY ═══════════════════ */}
         {tab === 'community' && (
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats row — same layout as public dashboard */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 28 }}>
+            <div className="grid-5" style={{ gap: 14, marginBottom: 28 }}>
               {[
                 { label: 'Community Score', value: `${communityScore}%`, accent: communityScore >= 70 ? 'rgba(74,222,128,0.2)' : 'rgba(245,158,11,0.2)' },
                 { label: 'Total Assets', value: allAssets.length, accent: 'rgba(26,92,26,0.3)' },
@@ -418,7 +418,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 28 }}>
+            <div className="grid-5" style={{ gap: 16, marginBottom: 28 }}>
               {[
                 { label: 'Total Violations', value: totalViolations, accent: 'rgba(239,68,68,0.18)' },
                 { label: 'Assets Monitored', value: allAssets.length, accent: 'rgba(26,92,26,0.28)' },
@@ -455,7 +455,7 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div className="grid-2" style={{ gap: 20 }}>
               {/* Platform breakdown */}
               <div className="ap-chart-card">
                 <div className="ap-chart-title">Platform Breakdown</div>
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
 
             {/* Platform analytics — same as public dashboard bottom */}
             {allAlerts.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+              <div className="grid-2" style={{ gap: 20, marginTop: 20 }}>
                 <div className="ap-chart-card">
                   <div className="ap-chart-title" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)' }}>
                     Violations by Platform
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
                   <div className="ap-chart-title" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)' }}>
                     Protection Overview
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="grid-2" style={{ gap: 14 }}>
                     <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.06)', borderRadius: 10, border: '1px solid rgba(74,222,128,0.15)' }}>
                       <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#4ade80' }}>{allAssets.length - violatedAssets}</div>
                       <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Clean Assets</div>
@@ -697,7 +697,7 @@ export default function AdminDashboard() {
             </div>
 
             {healthResults.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
+              <div className="grid-3" style={{ gap: 14, marginBottom: 24 }}>
                 {[
                   { label: 'Healthy', value: healthResults.filter(r => r.ok).length, color: '#4ade80' },
                   { label: 'Failed', value: healthResults.filter(r => !r.ok).length, color: '#ef4444' },
@@ -773,7 +773,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+                <div className="grid-4" style={{ gap: 14, marginBottom: 20 }}>
                   {[
                     { label: 'Total Users', value: userStats.totalUsers, color: '#4ade80' },
                     { label: 'New This Week', value: userStats.newUsersThisWeek, color: '#60a5fa' },
@@ -787,7 +787,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="grid-2" style={{ gap: 16, marginBottom: 20 }}>
                   {/* Scan overview */}
                   <div className="ap-chart-card">
                     <div className="ap-chart-title">Scan Overview</div>

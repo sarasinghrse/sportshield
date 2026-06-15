@@ -236,7 +236,7 @@ export default function SettingsPage() {
             </div>
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2" style={{ gap: 16 }}>
             <Field label="Gender">
               <select value={gender} onChange={e => setGender(e.target.value)}
                 className="ap-input" style={{ cursor: 'pointer' }}>

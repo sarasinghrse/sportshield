@@ -53,7 +53,7 @@ export default function DMCANoticePage() {
             <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: 12 }}>
               What&apos;s Included in the Notice
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2" style={{ gap: 12 }}>
               {[
                 'Your name & contact info',
                 'Asset details & pHash fingerprint',

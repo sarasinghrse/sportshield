@@ -224,7 +224,7 @@ export default function Dashboard() {
             <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
             <span className="db-logo-text">SPORTSHIELD</span>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="db-nav-links-wrap">
             <Link href="/radar" className="db-nav-link">Live Radar</Link>
             <Link href="/public-dashboard" className="db-nav-link">Community</Link>
             <Link href="/analytics" className="db-nav-link">Analytics</Link>
@@ -249,7 +249,7 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        <main style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px' }}>
+        <main className="app-main">
 
           {/* ── Demo Banner ── */}
           {isDemo && (
@@ -263,7 +263,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Protection Score ── */}
-          <div className="db-card" style={{ padding: '24px 28px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div className="db-card db-protection-card" style={{ padding: '24px 28px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
             {/* Ring */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <svg width="88" height="88" viewBox="0 0 88 88">
@@ -341,7 +341,7 @@ export default function Dashboard() {
           </div>
 
           {/* ── Stats Grid ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
+          <div className="grid-4" style={{ gap: 16, marginBottom: 28 }}>
             {[
               { label: 'Assets Protected', value: assets.length,  color: '#4ade80', accent: 'rgba(26,92,26,0.3)' },
               { label: 'Matches Found',    value: totalMatches,   color: '#f87171', accent: 'rgba(220,38,38,0.2)' },
@@ -385,7 +385,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Browser Extension + WhatsApp Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, alignItems: 'stretch' }}>
+          <div className="grid-2" style={{ gap: 16, marginBottom: 28, alignItems: 'stretch' }}>
 
             {/* Extension CTA */}
             <div className="db-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -545,7 +545,7 @@ export default function Dashboard() {
                   const res = await fetch(`${API}/api/url-monitor/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: newWatchUrl, label: newWatchLabel || 'Untitled', user_id: user.uid }) });
                   if (res.ok) { const data = await res.json(); setWatchedUrls(data.urls || []); setNewWatchUrl(''); setNewWatchLabel(''); }
                 } catch {} finally { setWatchLoading(false); }
-              }} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              }} className="db-watch-form" style={{ marginBottom: 16 }}>
                 <input placeholder="URL to monitor..." value={newWatchUrl} onChange={e => setNewWatchUrl(e.target.value)} style={{ flex: 2, background: 'rgba(10,18,16,0.6)', border: '1px solid rgba(26,92,26,0.35)', borderRadius: 8, padding: '9px 14px', color: '#d4e8d4', fontSize: '0.82rem', outline: 'none', fontFamily: "'Barlow', sans-serif" }} />
                 <input placeholder="Label (optional)" value={newWatchLabel} onChange={e => setNewWatchLabel(e.target.value)} style={{ flex: 1, background: 'rgba(10,18,16,0.6)', border: '1px solid rgba(26,92,26,0.35)', borderRadius: 8, padding: '9px 14px', color: '#d4e8d4', fontSize: '0.82rem', outline: 'none', fontFamily: "'Barlow', sans-serif" }} />
                 <button type="submit" disabled={watchLoading || !newWatchUrl.trim()} style={{ background: '#1a5c1a', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '0.82rem', letterSpacing: '0.04em', opacity: watchLoading || !newWatchUrl.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>
