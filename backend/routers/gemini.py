@@ -1,13 +1,17 @@
 """
-SportShield AI Helper — powered by Google Gemini and LangGraph
-Heavy deps (langchain, langgraph) are lazy-loaded to keep startup memory low.
+SportShield AI Helper — powered by Google Gemini 2.0 Flash.
+Uses direct HTTP calls (same pattern as piracy_scanner, report_generator).
 """
 
 import os
+import httpx
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 SYSTEM_PROMPT = """You are SportShield Assistant, a helpful AI navigator for the SportShield platform — a sports media protection tool built for the Google Solutions Challenge.
 
@@ -30,118 +34,80 @@ ADVANCED FEATURES:
 - WhatsApp Alerts: Get piracy notifications on your phone
 - War Room Dashboard: Live monitoring of all detection and enforcement activity
 
-PAGES (use the exact page_name in parentheses with trigger_navigation):
-- Dashboard (dashboard) — overview of protected assets, alerts, risk scores
-- Upload (upload) — upload and protect a new image or video
-- Alerts (alerts) — piracy alerts with AI summaries and DMCA actions
-- Analytics (analytics) — violation trends and platform breakdown
-- Reports (reports) — weekly AI protection reports
-- War Room / Live Radar (war_room) — live radar, enforcement, crowd network
-- Community (community) — public assets and community feed
-- Settings (settings) — account preferences
-- Verify (verify) — public URL/asset verification tool
+PAGES (if a user asks to go somewhere, include a navigate_to field in your response):
+- Dashboard → /
+- Upload → /upload
+- Alerts → /alerts
+- Analytics → /analytics
+- Reports → /reports
+- War Room / Live Radar → /radar
+- Community → /public-dashboard
+- Settings → /settings
+- Verify → /verify
 
-You have tools to access Live Radar Statistics and trigger page navigation.
-If a user explicitly asks to go to a page or you feel taking them to a page is the best way to help them, use the trigger_navigation tool.
 Keep answers concise (2-4 sentences). Be friendly and helpful. If asked about something unrelated to SportShield, gently redirect to how you can help with the platform. Never reveal API keys or internal implementation details.
+
+If the user asks to navigate to a page, respond naturally AND include the page path at the very end of your response in this exact format on its own line: NAVIGATE:/path
+For example: "Taking you to the War Room now!" followed by a new line with NAVIGATE:/radar
 """
+
 
 class ChatRequest(BaseModel):
     message: str
     history: list = []
 
 
-_agent_cache = {}
-
-def _get_tools():
-    from langchain_core.tools import tool
-
-    @tool
-    def get_dashboard_stats() -> dict:
-        """Provides statistics about radar detections and monitored events. Use this when the user asks about live monitoring or stats."""
-        from services.radar_engine import get_radar_stats
-        return get_radar_stats("demo_user")
-
-    @tool
-    def trigger_navigation(page_name: str) -> str:
-        """Triggers navigation to a specific page on the frontend. Use this when the user asks to go to / open / take me to a page. Valid inputs: 'dashboard', 'upload', 'alerts', 'analytics', 'reports', 'war_room', 'community', 'settings', 'verify'."""
-        return f"NAVIGATE_TO:{page_name}"
-
-    return [get_dashboard_stats, trigger_navigation]
-
-
-def get_agent():
-    if not os.getenv("GEMINI_API_KEY"):
-        return None
-    if "agent" in _agent_cache:
-        return _agent_cache["agent"]
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY"))
-    tools = _get_tools()
-    agent = llm.bind_tools(tools)
-    _agent_cache["agent"] = agent
-    _agent_cache["tools"] = tools
-    return agent
-
-
 @router.post("/chat")
 async def chat(req: ChatRequest):
-    agent = get_agent()
-
-    if not agent:
+    if not GEMINI_API_KEY:
         return {"reply": "AI assistant is not configured yet. Please set the GEMINI_API_KEY environment variable."}
 
-    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+    contents = []
 
-    messages = [SystemMessage(content=SYSTEM_PROMPT)]
-    messages.append(AIMessage(content="Understood. I'm SportShield Assistant, ready to help users navigate the platform."))
+    contents.append({"role": "user", "parts": [{"text": "System instructions: " + SYSTEM_PROMPT}]})
+    contents.append({"role": "model", "parts": [{"text": "Understood. I'm SportShield Assistant, ready to help users navigate the platform and answer questions."}]})
 
     for msg in req.history[-10:]:
-        role = msg.get("role", "user")
+        role = "model" if msg.get("role") == "model" else "user"
         text = msg.get("text", "")
-        if role == "model":
-            messages.append(AIMessage(content=text))
-        else:
-            messages.append(HumanMessage(content=text))
+        if text:
+            contents.append({"role": role, "parts": [{"text": text}]})
 
-    messages.append(HumanMessage(content=req.message))
+    contents.append({"role": "user", "parts": [{"text": req.message}]})
 
     try:
-        result = await agent.ainvoke(messages)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+                json={
+                    "contents": contents,
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "maxOutputTokens": 300,
+                    },
+                },
+            )
+            data = resp.json()
 
-        reply_text = result.content
+        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+        if not text:
+            return {"reply": "I couldn't process that. Could you rephrase?"}
+
         navigate_to = None
+        reply_lines = []
+        for line in text.strip().split("\n"):
+            if line.strip().startswith("NAVIGATE:"):
+                navigate_to = line.strip().replace("NAVIGATE:", "").strip()
+            else:
+                reply_lines.append(line)
 
-        if result.tool_calls:
-            for tc in result.tool_calls:
-                if tc["name"] == "trigger_navigation":
-                    navigate_to = tc["args"].get("page_name")
-                    reply_text = "Taking you there..."
-                elif tc["name"] == "get_dashboard_stats":
-                    from services.radar_engine import get_radar_stats
-                    stats = get_radar_stats("demo_user")
-                    reply_text = f"Here are your live stats: {stats.get('active_events', 0)} active events with {stats.get('total_suspects_analyzed', 0)} total suspects analyzed, and {stats.get('pirate_streams_found', 0)} pirate streams blocked."
+        response = {"reply": "\n".join(reply_lines).strip() or text.strip()}
+        if navigate_to:
+            response["navigate_to"] = navigate_to
 
-        response_data = {"reply": reply_text if reply_text else "I couldn't process that command."}
-
-        page_map = {
-            "dashboard": "/",
-            "upload": "/upload",
-            "alerts": "/alerts",
-            "analytics": "/analytics",
-            "reports": "/reports",
-            "war_room": "/radar",
-            "radar": "/radar",
-            "community": "/public-dashboard",
-            "settings": "/settings",
-            "verify": "/verify",
-        }
-
-        if navigate_to and navigate_to in page_map:
-            response_data["navigate_to"] = page_map[navigate_to]
-
-        return response_data
+        return response
 
     except Exception as e:
-        print(f"[GEMINI] Error: {e}")
+        print(f"[GEMINI CHAT] Error: {e}")
         return {"reply": "Sorry, I'm having trouble connecting right now. Please try again in a moment."}
