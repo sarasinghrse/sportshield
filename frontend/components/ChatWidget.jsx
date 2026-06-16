@@ -6,12 +6,13 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export default function ChatWidget() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const DEMO_QUESTION = "Hey, tell me about SportShield!";
+  const DEMO_ANSWER = "SportShield is an AI-powered sports content protection platform built for the Google Solutions Challenge. It helps sports photographers, videographers, and broadcasters protect their media from unauthorized use.\n\nHere's what it does:\n\n• Upload & Protect — upload your sports images/videos, and we fingerprint and monitor them across the web.\n• Web Scanning — automated reverse image search finds unauthorized copies on pirate sites.\n• AI Detection — detects AI-generated or manipulated images using Cloud Vision.\n• DMCA Notices — one-click generation of legal takedown notices.\n• War Room — real-time piracy radar for live sports broadcasts.\n• Browser Extension — flag pirate sites and access your dashboard instantly.\n• WhatsApp Bot — send a photo and get a full scan back in 30 seconds.\n\nAgent coming up soon!";
+
   const [messages, setMessages] = useState([
     { role: 'model', text: "Hi! I'm the SportShield Assistant. Ask me anything about the platform — features, how to protect your media, or how to get started." },
-    { role: 'user', text: "Hey, tell me about SportShield!" },
-    { role: 'model', text: "SportShield is an AI-powered sports content protection platform built for the Google Solutions Challenge. It helps sports photographers, videographers, and broadcasters protect their media from unauthorized use.\n\nHere's what it does:\n\n• Upload & Protect — upload your sports images/videos, and we fingerprint and monitor them across the web.\n• Web Scanning — automated reverse image search finds unauthorized copies on pirate sites.\n• AI Detection — detects AI-generated or manipulated images using Cloud Vision.\n• DMCA Notices — one-click generation of legal takedown notices.\n• War Room — real-time piracy radar for live sports broadcasts.\n• Browser Extension — flag pirate sites and access your dashboard instantly.\n• WhatsApp Bot — send a photo and get a full scan back in 30 seconds.\n\nAgent coming up soon!" },
   ]);
-  const [input, setInput] = useState('');
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
@@ -19,38 +20,15 @@ export default function ChatWidget() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-
-    const userMsg = { role: 'user', text };
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    setInput('');
+  const send = () => {
+    if (sent || loading) return;
+    setMessages(prev => [...prev, { role: 'user', text: DEMO_QUESTION }]);
     setLoading(true);
-
-    try {
-      const res = await fetch(`${API}/api/gemini/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          history: updated.slice(1).map(m => ({ role: m.role, text: m.text })),
-        }),
-      });
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'model', text: data.reply || 'Sorry, something went wrong.' }]);
-
-      // If the agent triggered navigation, route the user after a short delay
-      if (data.navigate_to) {
-        setTimeout(() => {
-          router.push(data.navigate_to);
-        }, 800);
-      }
-    } catch {
-      setMessages(prev => [...prev, { role: 'model', text: "Couldn't reach the server. Please try again." }]);
-    }
-    setLoading(false);
+    setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'model', text: DEMO_ANSWER }]);
+      setLoading(false);
+      setSent(true);
+    }, 1500);
   };
 
   return (
@@ -210,13 +188,12 @@ export default function ChatWidget() {
           <div className="cw-input-row">
             <input
               className="cw-input"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send()}
-              placeholder="Agent coming up soon!"
-              disabled={loading}
+              value={sent ? 'Agent coming up soon!' : DEMO_QUESTION}
+              readOnly
+              onClick={() => !sent && send()}
+              style={sent ? { opacity: 0.5, cursor: 'default' } : { cursor: 'pointer' }}
             />
-            <button className="cw-send" onClick={send} disabled={!input.trim() || loading}>
+            <button className="cw-send" onClick={send} disabled={sent || loading}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
