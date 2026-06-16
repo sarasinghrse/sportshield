@@ -40,6 +40,26 @@ class ChatRequest(BaseModel):
     history: list = []
 
 
+@router.get("/debug-status")
+async def debug_status():
+    """Temporary debug endpoint to check Gemini config."""
+    key = GEMINI_API_KEY
+    if not key:
+        return {"status": "NO_KEY", "detail": "GEMINI_API_KEY env var is empty"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"{GEMINI_URL}?key={key}",
+                json={"contents": [{"role": "user", "parts": [{"text": "hi"}]}]},
+            )
+            data = resp.json()
+            if "error" in data:
+                return {"status": "API_ERROR", "error": data["error"]}
+            return {"status": "OK", "model": "gemini-2.0-flash"}
+    except Exception as e:
+        return {"status": "EXCEPTION", "detail": str(e)}
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
     if not GEMINI_API_KEY:
