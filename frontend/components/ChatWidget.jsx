@@ -8,6 +8,8 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'model', text: "Hi! I'm the SportShield Assistant. Ask me anything about the platform — features, how to protect your media, or how to get started." },
+    { role: 'user', text: "Hey, tell me about SportShield!" },
+    { role: 'model', text: "SportShield is an AI-powered sports content protection platform built for the Google Solutions Challenge. It helps sports photographers, videographers, and broadcasters protect their media from unauthorized use.\n\nHere's what it does:\n\n• Upload & Protect — upload your sports images/videos, and we fingerprint and monitor them across the web.\n• Web Scanning — automated reverse image search finds unauthorized copies on pirate sites.\n• AI Detection — detects AI-generated or manipulated images using Cloud Vision.\n• DMCA Notices — one-click generation of legal takedown notices.\n• War Room — real-time piracy radar for live sports broadcasts.\n• Browser Extension — flag pirate sites and access your dashboard instantly.\n• WhatsApp Bot — send a photo and get a full scan back in 30 seconds.\n\nAgent coming up soon!" },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -211,7 +213,7 @@ export default function ChatWidget() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && send()}
-              placeholder="Ask about SportShield..."
+              placeholder="Agent coming up soon!"
               disabled={loading}
             />
             <button className="cw-send" onClick={send} disabled={!input.trim() || loading}>
