@@ -12,7 +12,7 @@ import MediaTypes     from '../components/landing/MediaTypes';
 import Community      from '../components/landing/Community';
 import WhatsAppBot    from '../components/landing/WhatsAppBot';
 import Footer         from '../components/landing/Footer';
-import { CTABanner, Mission, MoreInfo, FAQ } from '../components/landing/Sections';
+import { MobileApp, CTABanner, Mission, MoreInfo, FAQ } from '../components/landing/Sections';
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -43,6 +43,7 @@ export default function LandingPage() {
         <MediaTypes />
         <Community />
         <WhatsAppBot />
+        <MobileApp />
         <CTABanner />
         <Mission />
         <MoreInfo />

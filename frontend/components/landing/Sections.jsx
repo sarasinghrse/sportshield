@@ -1,6 +1,51 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+/* ── Mobile App Coming Soon ────────────────────────── */
+export function MobileApp() {
+  return (
+    <section style={{
+      background: 'linear-gradient(135deg, #0a1210 0%, #0d1f10 60%, #0a1a0d 100%)',
+      borderTop: '1px solid rgba(26,92,26,0.25)',
+      borderBottom: '1px solid rgba(26,92,26,0.25)',
+      padding: 'clamp(40px,6vw,56px) 24px',
+    }}>
+      <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          background: 'rgba(74,222,128,0.1)', border: '1px dashed rgba(74,222,128,0.35)',
+          borderRadius: 20, padding: '5px 14px', marginBottom: 20,
+        }}>
+          <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Coming Soon</span>
+        </div>
+
+        <h2 style={{
+          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900,
+          fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', color: '#ffffff',
+          lineHeight: 1.1, marginBottom: 16,
+        }}>
+          SportShield on Your Phone.{' '}
+          <span style={{ color: '#4ade80' }}>Anywhere.</span>
+        </h2>
+
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: 28, maxWidth: 520, margin: '0 auto 28px' }}>
+          Upload from your camera, get push alerts for piracy detections, and file takedowns on the go — built with Flutter + Firebase.
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
+          {['Camera Upload', 'Push Alerts', 'Mobile Takedowns', 'Offline Drafts'].map(f => (
+            <span key={f} style={{
+              background: 'rgba(26,92,26,0.15)', border: '1px solid rgba(74,222,128,0.2)',
+              borderRadius: 8, padding: '6px 14px', color: 'rgba(255,255,255,0.55)',
+              fontSize: '0.8rem', fontWeight: 600,
+            }}>{f}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── CTA Banner ─────────────────────────────────────── */
 export function CTABanner() {
   return (
