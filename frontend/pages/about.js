@@ -4,25 +4,35 @@ import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 
 const VALUES = [
-  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='#fbbf24'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>, title: 'Speed matters',
-    desc: 'Violations spread fast. Our automated scans mean you find out about unauthorized use quickly — not weeks later.' },
-  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#4ade80' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>, title: 'Creators deserve protection',
-    desc: 'Sports photography and videography take real skill. Creators deserve to control how their work is used.' },
-  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#60a5fa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg>, title: 'Legal tools for everyone',
-    desc: 'DMCA notices and ownership certificates shouldn\'t require a lawyer. We make it a 30-second task.' },
-  { icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#a78bfa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='11' width='18' height='10' rx='2'/><circle cx='12' cy='5' r='2'/><path d='M12 7v4'/><line x1='8' y1='16' x2='8.01' y2='16'/><line x1='16' y1='16' x2='16.01' y2='16'/></svg>, title: 'AI on your side',
-    desc: 'From AI-generated image detection to reverse-image scanning, we put cutting-edge tools in every creator\'s hands.' },
+  {
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='#fbbf24'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' /></svg>, title: 'Speed matters',
+    desc: 'Violations spread fast. Our automated scans mean you find out about unauthorized use quickly — not weeks later.'
+  },
+  {
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#4ade80' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' /></svg>, title: 'Creators deserve protection',
+    desc: 'Sports photography and videography take real skill. Creators deserve to control how their work is used.'
+  },
+  {
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#60a5fa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' /><polyline points='14 2 14 8 20 8' /><line x1='16' y1='13' x2='8' y2='13' /><line x1='16' y1='17' x2='8' y2='17' /></svg>, title: 'Legal tools for everyone',
+    desc: 'DMCA notices and ownership certificates shouldn\'t require a lawyer. We make it a 30-second task.'
+  },
+  {
+    icon: <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#a78bfa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='11' width='18' height='10' rx='2' /><circle cx='12' cy='5' r='2' /><path d='M12 7v4' /><line x1='8' y1='16' x2='8.01' y2='16' /><line x1='16' y1='16' x2='16.01' y2='16' /></svg>, title: 'AI on your side',
+    desc: 'From AI-generated image detection to reverse-image scanning, we put cutting-edge tools in every creator\'s hands.'
+  },
 ];
 
 const TEAM = [
-  { name: 'Sara Singh',  role: 'Full-Stack Web', linkedin: 'https://www.linkedin.com/in/sara-singh-574673267/',  email: 'sarasingh2k27@gmail.com' },
-  { name: 'Anshu Raj',   role: 'Flutter / Mobile', linkedin: 'https://www.linkedin.com/in/anshu-raj-142b55253/', email: 'anshurajwork@gmail.com' },
-  { name: 'Amit Singh',  role: 'Backend / AI',    linkedin: 'https://www.linkedin.com/in/amit-singh-58101928a/', email: 'amitksingh3022@gmail.com' },
+  { name: 'Sara Singh', role: 'Full-Stack Web', linkedin: 'https://www.linkedin.com/in/sara-singh-574673267/', email: 'sarasingh2k27@gmail.com' },
+  { name: 'Anshu Raj', role: 'Flutter / Mobile', linkedin: 'https://www.linkedin.com/in/anshu-raj-142b55253/', email: 'anshurajwork@gmail.com' },
+  { name: 'Amit Singh', role: 'Backend / AI', linkedin: 'https://www.linkedin.com/in/amit-singh-58101928a/', email: 'amitksingh3022@gmail.com' },
 ];
 
 const STACK = [
-  'Next.js 14', 'FastAPI', 'Firebase Firestore', 'Cloudinary', 'SerpAPI',
-  'HuggingFace AI', 'Brevo Email', 'Python pHash', 'Render (free)', 'Vercel',
+  'Next.js 16', 'FastAPI', 'Firebase Auth', 'Firebase Firestore', 'Firebase App Hosting',
+  'Google Cloud Run', 'Google Cloud Storage', 'Gemini 2.0 Flash', 'Vertex AI Embeddings',
+  'Cloud Vision API', 'Gmail SMTP', 'SerpAPI', 'APScheduler', 'Twilio WhatsApp',
+  'Cloudinary (fallback)', 'HuggingFace AI (fallback)', 'Qdrant Cloud', 'Python pHash',
 ];
 
 export default function AboutPage() {
@@ -108,7 +118,7 @@ export default function AboutPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
                   <a href={`mailto:${m.email}`} className="ap-muted" style={{ fontSize: '0.78rem', textDecoration: 'none' }}>{m.email}</a>
                   <a href={m.linkedin} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: '#60a5fa', textDecoration: 'none' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                     LinkedIn ↗
                   </a>
                 </div>
