@@ -1,4 +1,5 @@
 .env
+.claude/
 .venv/
 serviceAccountKey.json
 __pycache__/
