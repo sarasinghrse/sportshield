@@ -175,9 +175,10 @@ export default function ReportsPage() {
             <Link href="/" className="ap-back">← Dashboard</Link>
             <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
             <Link href="/" className="ap-logo">
-              <img src="/images/sportshield-logo-transparent.png" alt="" style={{ height: 28 }} />
-              <span>SPORTSHIELD</span>
+              <img src="/images/sportshield-logo-transparent.png" alt="SportShield" />
+              <span className="ap-logo-text">SPORTSHIELD</span>
             </Link>
+            <span className="ap-page-tag" style={{ marginLeft: 4 }}>/ Reports</span>
           </div>
           <div className="ap-nav-right">
             <ProfileAvatar />
