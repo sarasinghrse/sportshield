@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
@@ -27,6 +27,7 @@ export default function ReportsPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const fetched = useRef(false);
 
   useEffect(() => {
     if (!isDemo && !authLoading && !user) router.replace('/login');
@@ -39,12 +40,13 @@ export default function ReportsPage() {
       setLoading(false);
       return;
     }
-    if (!user) return;
+    if (!user || fetched.current) return;
+    fetched.current = true;
     Promise.all([
       fetch(`${API}/api/reports/latest?user_id=${user.uid}`).then(r => r.ok ? r.json() : null),
       fetch(`${API}/api/reports/history?user_id=${user.uid}`).then(r => r.ok ? r.json() : []),
     ]).then(([latest, hist]) => {
-      setReport(latest);
+      if (latest) setReport(latest);
       setHistory(hist || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [user, isDemo]);
@@ -70,100 +72,155 @@ export default function ReportsPage() {
   const scoreColor = s?.protectionScoreCurrent >= 80 ? '#4ade80' : s?.protectionScoreCurrent >= 50 ? '#f59e0b' : '#ef4444';
   const scoreDiff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!report) return;
-    const periodStartStr = format(new Date(toDate(report.periodStart)), 'MMM d, yyyy');
-    const periodEndStr = format(new Date(toDate(report.periodEnd)), 'MMM d, yyyy');
-    const sc = s?.protectionScoreCurrent || 0;
-    const scColor = sc >= 80 ? '#4ade80' : sc >= 50 ? '#f59e0b' : '#ef4444';
-    const diff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
-    const alertRows = (report.topAlerts || []).map(ta => `
-      <tr>
-        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;">${ta.assetName}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;">
-          <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700;text-transform:uppercase;
-            background:${ta.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)'};
-            color:${ta.severity === 'high' ? '#ef4444' : '#f59e0b'};">${ta.severity}</span>
-        </td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;color:#60a5fa;word-break:break-all;">${ta.foundUrl}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1a3a1a;font-weight:700;color:${Math.round(ta.confidence * 100) >= 80 ? '#ef4444' : '#f59e0b'};">${Math.round(ta.confidence * 100)}%</td>
-      </tr>`).join('');
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const W = 210;
+      const periodStartStr = format(new Date(toDate(report.periodStart)), 'MMM d, yyyy');
+      const periodEndStr = format(new Date(toDate(report.periodEnd)), 'MMM d, yyyy');
+      const sc = s?.protectionScoreCurrent || 0;
+      const diff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
 
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SportShield Protection Report - ${periodEndStr}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080f09; color: #e0e0e0; padding: 40px 24px; }
-  .container { max-width: 800px; margin: 0 auto; }
-  .header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid #1a3a1a; }
-  .header h1 { font-size: 1.8rem; color: #fff; margin-bottom: 4px; }
-  .header .period { font-size: 0.9rem; color: rgba(255,255,255,0.5); }
-  .header .brand { font-size: 0.75rem; color: #4ade80; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-  .stat-card { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 18px 14px; text-align: center; }
-  .stat-value { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
-  .stat-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-  .score-card { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 22px 24px; margin-bottom: 28px; display: flex; align-items: center; gap: 20px; }
-  .score-value { font-size: 2.4rem; font-weight: 900; }
-  .score-max { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
-  .section { background: rgba(12,24,14,0.7); border: 1px solid #1a3a1a; border-radius: 12px; padding: 24px; margin-bottom: 28px; }
-  .section h3 { font-size: 1.05rem; color: #fff; margin-bottom: 14px; font-weight: 800; }
-  .narrative { color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.75; white-space: pre-line; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th { text-align: left; padding: 10px 14px; color: rgba(255,255,255,0.4); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #1a3a1a; }
-  .footer { text-align: center; margin-top: 36px; padding-top: 20px; border-top: 1px solid #1a3a1a; font-size: 0.78rem; color: rgba(255,255,255,0.3); }
-  @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="header">
-    <div class="brand">SportShield</div>
-    <h1>Weekly Protection Report</h1>
-    <p class="period">${periodStartStr} &mdash; ${periodEndStr}</p>
-  </div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value" style="color:#f87171;">${s?.newMatches || 0}</div><div class="stat-label">Matches Found</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#fbbf24;">${s?.alertsTriggered || 0}</div><div class="stat-label">Alerts Triggered</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#4ade80;">${s?.dmcaActionsTaken || 0}</div><div class="stat-label">DMCA Actions</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#34d399;">${s?.assetsScanned || 0}</div><div class="stat-label">Assets Scanned</div></div>
-  </div>
-  <div class="score-card">
-    <div><span class="score-value" style="color:${scColor};">${sc}</span> <span class="score-max">/ 100</span></div>
-    <div>
-      <p style="font-weight:800;color:#fff;margin-bottom:2px;">Protection Score</p>
-      <p style="font-size:0.82rem;color:${diff >= 0 ? '#4ade80' : '#f87171'};">${diff >= 0 ? '&#8593;' : '&#8595;'} ${Math.abs(diff)} from last week (${s?.protectionScorePrevious || 0})</p>
-    </div>
-  </div>
-  <div class="section">
-    <h3>AI Summary</h3>
-    <p class="narrative">${(report.narrative || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-  </div>
-  ${alertRows ? `<div class="section">
-    <h3>Top Alerts This Week</h3>
-    <table><thead><tr><th>Asset</th><th>Severity</th><th>Found URL</th><th>Confidence</th></tr></thead><tbody>${alertRows}</tbody></table>
-  </div>` : ''}
-  <div class="footer">
-    <p>Generated by SportShield &mdash; AI-Powered Sports Media Protection</p>
-    <p style="margin-top:4px;">Report downloaded on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-  </div>
-</div>
-</body>
-</html>`;
+      // Green header band
+      pdf.setFillColor(26, 92, 26);
+      pdf.rect(0, 0, W, 42, 'F');
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sportshield-report-${format(new Date(toDate(report.periodEnd)), 'yyyy-MM-dd')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(74, 222, 128);
+      pdf.text('SPORTSHIELD', 14, 14);
+
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('Weekly Protection Report', 14, 26);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(180, 220, 180);
+      pdf.text(`${periodStartStr}  —  ${periodEndStr}`, 14, 36);
+
+      let y = 54;
+
+      // Stats row
+      const stats = [
+        { label: 'MATCHES', value: String(s?.newMatches || 0), r: 248, g: 113, b: 113 },
+        { label: 'ALERTS', value: String(s?.alertsTriggered || 0), r: 251, g: 191, b: 36 },
+        { label: 'DMCA ACTIONS', value: String(s?.dmcaActionsTaken || 0), r: 74, g: 222, b: 128 },
+        { label: 'ASSETS SCANNED', value: String(s?.assetsScanned || 0), r: 52, g: 211, b: 153 },
+      ];
+      const boxW = (W - 28 - 12) / 4;
+      stats.forEach((st, i) => {
+        const x = 14 + i * (boxW + 4);
+        pdf.setFillColor(12, 24, 14);
+        pdf.roundedRect(x, y, boxW, 22, 2, 2, 'F');
+        pdf.setFontSize(18);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(st.r, st.g, st.b);
+        pdf.text(st.value, x + boxW / 2, y + 12, { align: 'center' });
+        pdf.setFontSize(6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(160, 160, 160);
+        pdf.text(st.label, x + boxW / 2, y + 19, { align: 'center' });
+      });
+      y += 30;
+
+      // Protection score
+      pdf.setFillColor(12, 24, 14);
+      pdf.roundedRect(14, y, W - 28, 18, 2, 2, 'F');
+      const scR = sc >= 80 ? 74 : sc >= 50 ? 245 : 239;
+      const scG = sc >= 80 ? 222 : sc >= 50 ? 158 : 68;
+      const scB = sc >= 80 ? 128 : sc >= 50 ? 11 : 68;
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(scR, scG, scB);
+      pdf.text(String(sc), 22, y + 13);
+      pdf.setFontSize(9);
+      pdf.setTextColor(160, 160, 160);
+      pdf.text('/ 100', 38, y + 13);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('Protection Score', 60, y + 10);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(diff >= 0 ? 74 : 248, diff >= 0 ? 222 : 113, diff >= 0 ? 128 : 113);
+      pdf.text(`${diff >= 0 ? '+' : ''}${diff} from last week (${s?.protectionScorePrevious || 0})`, 60, y + 16);
+      y += 26;
+
+      // AI Summary
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('AI Summary', 14, y);
+      y += 6;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(180, 180, 180);
+      const narrativeLines = pdf.splitTextToSize(report.narrative || 'No summary available.', W - 28);
+      pdf.text(narrativeLines, 14, y);
+      y += narrativeLines.length * 4.5 + 8;
+
+      // Top Alerts table
+      const alerts = report.topAlerts || [];
+      if (alerts.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('Top Alerts This Week', 14, y);
+        y += 7;
+
+        // Table header
+        pdf.setFillColor(12, 24, 14);
+        pdf.rect(14, y, W - 28, 8, 'F');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(160, 160, 160);
+        pdf.text('ASSET', 16, y + 5.5);
+        pdf.text('SEVERITY', 70, y + 5.5);
+        pdf.text('FOUND URL', 100, y + 5.5);
+        pdf.text('CONF', 180, y + 5.5);
+        y += 10;
+
+        alerts.forEach(ta => {
+          if (y > 270) { pdf.addPage(); y = 20; }
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(220, 220, 220);
+          pdf.text((ta.assetName || 'Unknown').substring(0, 30), 16, y);
+          const sevColor = ta.severity === 'high' ? [239, 68, 68] : [251, 191, 36];
+          pdf.setTextColor(...sevColor);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text((ta.severity || 'medium').toUpperCase(), 70, y);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(96, 165, 250);
+          pdf.text((ta.foundUrl || '').substring(0, 45), 100, y);
+          const conf = Math.round((ta.confidence || 0) * 100);
+          pdf.setTextColor(conf >= 80 ? 239 : 251, conf >= 80 ? 68 : 191, conf >= 80 ? 68 : 36);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${conf}%`, 182, y);
+          y += 7;
+        });
+        y += 4;
+      }
+
+      // Footer
+      pdf.setDrawColor(26, 58, 26);
+      pdf.setLineWidth(0.3);
+      pdf.line(14, 280, W - 14, 280);
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(130, 130, 130);
+      pdf.text('Generated by SportShield — AI-Powered Sports Media Protection', W / 2, 286, { align: 'center' });
+      pdf.text(`Downloaded on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, W / 2, 291, { align: 'center' });
+
+      pdf.save(`SportShield-Report-${format(new Date(toDate(report.periodEnd)), 'yyyy-MM-dd')}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    }
   };
 
   return (
