@@ -4,12 +4,22 @@ Reports Router — weekly protection report generation and retrieval.
 Uses Google Cloud Firestore for storage and Gemini for AI narratives.
 """
 
+import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
 from services.firebase_client import db
 from services.report_generator import generate_weekly_report
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _serialize_report(doc) -> dict:
+    data = doc.to_dict()
+    data["id"] = doc.id
+    if hasattr(data.get("generatedAt"), "isoformat"):
+        data["generatedAt"] = data["generatedAt"].isoformat()
+    return data
 
 
 class GenerateRequest(BaseModel):
@@ -18,31 +28,42 @@ class GenerateRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_report(req: GenerateRequest):
-    report = await generate_weekly_report(req.user_id)
-    return report
+    try:
+        report = await generate_weekly_report(req.user_id)
+        return report
+    except Exception as e:
+        logger.error(f"[REPORTS] Generate failed for {req.user_id}: {e}")
+        return {"error": str(e)}
 
 
 @router.get("/latest")
 async def latest_report(user_id: str):
-    reports = (
-        db.collection("reports")
-        .where("userId", "==", user_id)
-        .order_by("generatedAt", direction="DESCENDING")
-        .limit(1)
-        .stream()
-    )
-    for doc in reports:
-        return {"id": doc.id, **doc.to_dict()}
+    try:
+        reports = list(
+            db.collection("reports")
+            .where("userId", "==", user_id)
+            .order_by("generatedAt", direction="DESCENDING")
+            .limit(1)
+            .stream()
+        )
+        if reports:
+            return _serialize_report(reports[0])
+    except Exception as e:
+        logger.error(f"[REPORTS] Latest query failed: {e}")
     return None
 
 
 @router.get("/history")
 async def report_history(user_id: str):
-    reports = (
-        db.collection("reports")
-        .where("userId", "==", user_id)
-        .order_by("generatedAt", direction="DESCENDING")
-        .limit(12)
-        .stream()
-    )
-    return [{"id": doc.id, **doc.to_dict()} for doc in reports]
+    try:
+        reports = list(
+            db.collection("reports")
+            .where("userId", "==", user_id)
+            .order_by("generatedAt", direction="DESCENDING")
+            .limit(12)
+            .stream()
+        )
+        return [_serialize_report(doc) for doc in reports]
+    except Exception as e:
+        logger.error(f"[REPORTS] History query failed: {e}")
+        return []

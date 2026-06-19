@@ -11,6 +11,13 @@ import { DEMO_REPORT } from '../lib/demoData';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+function toDate(val) {
+  if (!val) return new Date();
+  if (val.seconds) return new Date(val.seconds * 1000);
+  if (val.toDate) return val.toDate();
+  return new Date(val);
+}
+
 export default function ReportsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -65,8 +72,8 @@ export default function ReportsPage() {
 
   const handleDownload = () => {
     if (!report) return;
-    const periodStartStr = format(new Date(report.periodStart?.seconds ? report.periodStart.toDate() : report.periodStart), 'MMM d, yyyy');
-    const periodEndStr = format(new Date(report.periodEnd?.seconds ? report.periodEnd.toDate() : report.periodEnd), 'MMM d, yyyy');
+    const periodStartStr = format(new Date(toDate(report.periodStart)), 'MMM d, yyyy');
+    const periodEndStr = format(new Date(toDate(report.periodEnd)), 'MMM d, yyyy');
     const sc = s?.protectionScoreCurrent || 0;
     const scColor = sc >= 80 ? '#4ade80' : sc >= 50 ? '#f59e0b' : '#ef4444';
     const diff = s ? s.protectionScoreCurrent - s.protectionScorePrevious : 0;
@@ -152,7 +159,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sportshield-report-${format(new Date(report.periodEnd?.seconds ? report.periodEnd.toDate() : report.periodEnd), 'yyyy-MM-dd')}.html`;
+    a.download = `sportshield-report-${format(new Date(toDate(report.periodEnd)), 'yyyy-MM-dd')}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -196,7 +203,7 @@ export default function ReportsPage() {
               </h1>
               {report && (
                 <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
-                  {format(new Date(report.periodStart?.seconds ? report.periodStart.toDate() : report.periodStart), 'MMM d')} — {format(new Date(report.periodEnd?.seconds ? report.periodEnd.toDate() : report.periodEnd), 'MMM d, yyyy')}
+                  {format(new Date(toDate(report.periodStart)), 'MMM d')} — {format(new Date(toDate(report.periodEnd)), 'MMM d, yyyy')}
                 </p>
               )}
             </div>
@@ -302,7 +309,7 @@ export default function ReportsPage() {
                     {history.slice(1).map((r, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(26,92,26,0.06)', borderRadius: 8 }}>
                         <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>
-                          {format(new Date(r.periodStart?.seconds ? r.periodStart.toDate() : r.periodStart), 'MMM d')} — {format(new Date(r.periodEnd?.seconds ? r.periodEnd.toDate() : r.periodEnd), 'MMM d, yyyy')}
+                          {format(new Date(toDate(r.periodStart)), 'MMM d')} — {format(new Date(toDate(r.periodEnd)), 'MMM d, yyyy')}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.78rem' }}>
                           <span style={{ color: 'rgba(255,255,255,0.35)' }}>{r.stats?.alertsTriggered || 0} alerts</span>

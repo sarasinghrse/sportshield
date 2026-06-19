@@ -18,20 +18,26 @@ GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0
 
 
 def _query_period_stats(user_id: str, start: datetime, end: datetime) -> dict:
-    alerts_ref = db.collection("alerts")
-    alerts = list(
-        alerts_ref
-        .where("userId", "==", user_id)
-        .where("createdAt", ">=", start)
-        .where("createdAt", "<=", end)
-        .stream()
-    )
+    alert_dicts = []
+    try:
+        alerts = list(
+            db.collection("alerts")
+            .where("userId", "==", user_id)
+            .stream()
+        )
+        alert_dicts = [a.to_dict() for a in alerts]
+    except Exception as e:
+        print(f"[REPORT] Alerts query error: {e}")
 
-    alert_dicts = [a.to_dict() for a in alerts]
     top_alerts = sorted(alert_dicts, key=lambda a: a.get("riskScore", 0), reverse=True)[:5]
 
-    assets = list(db.collection("assets").where("userId", "==", user_id).stream())
-    asset_dicts = [a.to_dict() for a in assets]
+    asset_dicts = []
+    try:
+        assets = list(db.collection("assets").where("userId", "==", user_id).stream())
+        asset_dicts = [a.to_dict() for a in assets]
+    except Exception as e:
+        print(f"[REPORT] Assets query error: {e}")
+
     total_matches = sum(a.get("matchCount", 0) for a in asset_dicts)
 
     dmca_count = 0
@@ -39,7 +45,6 @@ def _query_period_stats(user_id: str, start: datetime, end: datetime) -> dict:
         dmcas = list(
             db.collection("dmca_notices")
             .where("userId", "==", user_id)
-            .where("createdAt", ">=", start)
             .stream()
         )
         dmca_count = len(dmcas)
@@ -84,14 +89,16 @@ def _query_period_stats(user_id: str, start: datetime, end: datetime) -> dict:
 
 
 async def _generate_narrative(stats: dict) -> str:
+    s = stats["stats"]
+    fallback = (
+        f"This week, {s['alertsTriggered']} alerts were triggered across "
+        f"{s['assetsScanned']} assets with {s['newMatches']} total matches. "
+        f"{s['dmcaActionsTaken']} DMCA actions were taken. "
+        f"Your protection score is {s['protectionScoreCurrent']}."
+    )
+
     if not GEMINI_API_KEY:
-        s = stats["stats"]
-        return (
-            f"This week, {s['alertsTriggered']} alerts were triggered across "
-            f"{s['assetsScanned']} assets with {s['newMatches']} total matches. "
-            f"{s['dmcaActionsTaken']} DMCA actions were taken. "
-            f"Your protection score is {s['protectionScoreCurrent']}."
-        )
+        return fallback
 
     system_prompt = (
         "You are SportShield's weekly report writer. Given stats about a user's "
@@ -101,8 +108,6 @@ async def _generate_narrative(stats: dict) -> str:
 
     import json
     contents = [
-        {"role": "user", "parts": [{"text": f"System instruction: {system_prompt}"}]},
-        {"role": "model", "parts": [{"text": "Understood. I'll write a concise weekly summary."}]},
         {"role": "user", "parts": [{"text": f"Weekly stats:\n{json.dumps(stats, indent=2)}"}]},
     ]
 
@@ -110,9 +115,16 @@ async def _generate_narrative(stats: dict) -> str:
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(
                 f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-                json={"contents": contents},
+                json={
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": contents,
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 400},
+                },
             )
             data = resp.json()
+        if "error" in data:
+            print(f"[REPORT] Gemini API error: {data['error']}")
+            return fallback
         candidates = data.get("candidates", [])
         if candidates:
             parts = candidates[0].get("content", {}).get("parts", [])
@@ -121,11 +133,7 @@ async def _generate_narrative(stats: dict) -> str:
     except Exception as e:
         print(f"[REPORT] Gemini error: {e}")
 
-    s = stats["stats"]
-    return (
-        f"This week, {s['alertsTriggered']} alerts were triggered across "
-        f"{s['assetsScanned']} assets. Your protection score is {s['protectionScoreCurrent']}."
-    )
+    return fallback
 
 
 async def generate_weekly_report(user_id: str) -> dict:
@@ -137,7 +145,7 @@ async def generate_weekly_report(user_id: str) -> dict:
 
     report = {
         "userId": user_id,
-        "generatedAt": now.isoformat(),
+        "generatedAt": now,
         "periodStart": start.isoformat(),
         "periodEnd": now.isoformat(),
         "stats": period_stats["stats"],
