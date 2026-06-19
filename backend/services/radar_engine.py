@@ -304,7 +304,7 @@ def get_radar_stats(user_id: str = "demo_user") -> dict:
         "total_events": len(event_dicts),
         "total_suspects_analyzed": sum(e.get("suspect_count", 0) for e in event_dicts),
         "total_detections": len(det_dicts),
-        "pirate_streams_found": len([d for d in det_dicts if d.get("verdict") == "PIRATE_STREAM_DETECTED"]),
+        "pirate_streams_found": len([d for d in det_dicts if d.get("verdict", "").upper() in ("PIRATE_STREAM_DETECTED", "CONFIRMED_PIRATE", "LIKELY_PIRATE")]),
         "engine_status": "active",
         "capabilities": {
             "audio_fingerprint": True,

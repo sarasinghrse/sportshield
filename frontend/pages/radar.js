@@ -95,14 +95,15 @@ export default function RadarPage() {
         .finally(() => clearTimeout(timer));
     };
     try {
+      const uid = user?.uid || 'demo_user';
       const [statsRes, eventsRes, detectionsRes, enfRes, crowdRes, lbRes, casesRes] = await Promise.all([
-        fetchJson(`${API}/api/media/radar/stats`, null),
-        fetchJson(`${API}/api/media/radar/events`, { events: [] }),
-        fetchJson(`${API}/api/media/radar/detections`, { detections: [] }),
-        fetchJson(`${API}/api/media/enforce/stats`, null),
-        fetchJson(`${API}/api/media/crowd/stats`, null),
-        fetchJson(`${API}/api/media/crowd/leaderboard?limit=10`, { leaderboard: [] }),
-        fetchJson(`${API}/api/media/enforce/cases`, { cases: [] }),
+        fetchJson(`${API}/api/media/radar/stats?user_id=${uid}`, null),
+        fetchJson(`${API}/api/media/radar/events?user_id=${uid}`, { events: [] }),
+        fetchJson(`${API}/api/media/radar/detections?user_id=${uid}`, { detections: [] }),
+        fetchJson(`${API}/api/media/enforce/stats?user_id=${uid}`, null),
+        fetchJson(`${API}/api/media/crowd/stats?user_id=${uid}`, null),
+        fetchJson(`${API}/api/media/crowd/leaderboard?limit=10&user_id=${uid}`, { leaderboard: [] }),
+        fetchJson(`${API}/api/media/enforce/cases?user_id=${uid}`, { cases: [] }),
       ]);
       const liveEvents = eventsRes.events || [];
       const liveDet = detectionsRes.detections || [];
