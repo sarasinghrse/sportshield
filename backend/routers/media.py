@@ -323,7 +323,7 @@ async def upload_media(
         "type":             resource_type,
         "phash":            phash,
         "uploadedAt":       datetime.now(timezone.utc),
-        "status":           "processing",
+        "status":           "scanning",
         "scanCount":        0,
         "matchCount":       0,
         "source":           "upload",
@@ -394,16 +394,155 @@ async def upload_media(
         "originalUrl":    original_url,
         "watermarkedUrl": "",
         "phash":          phash,
-        "status":         "processing",
+        "status":         "scanning",
     }
 
 
-def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash, original_url, filename, content_type, wants_email=False):
-    """Heavy processing that runs in a background thread after upload returns."""
-    import gc
-    updates = {}
-
+def _run_video_frame_scan(asset_id, user_id, file_bytes, original_url):
+    """Extract key frames from video, upload each to GCS, and scan via SerpAPI."""
     try:
+        db.collection("assets").document(asset_id).update({"status": "scanning"})
+
+        frames = _get('services.video_fingerprint', 'extract_frames')(file_bytes, max_frames=8)
+        if not frames:
+            print(f"[video_frame_scan] No frames extracted for {asset_id[:8]}")
+            db.collection("assets").document(asset_id).update({"status": "complete"})
+            return
+
+        print(f"[video_frame_scan] Extracted {len(frames)} frames, uploading & scanning")
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        all_matches = []
+        scan_time = datetime.now(timezone.utc)
+        trusted = get_trusted_domains(user_id)
+
+        def _scan_single_frame(idx_frame):
+            idx, frame_bytes = idx_frame
+            try:
+                frame_url = _get('services.gcs_client', 'upload_file')(
+                    frame_bytes, f"{asset_id}_frame_{idx}", user_id, "image",
+                    content_type="image/jpeg",
+                )
+                frame_phash = _get('services.fingerprint', 'compute_phash')(frame_bytes)
+                matches = scan_asset(frame_phash, frame_url, SERPAPI_KEY)
+                return [(m, idx) for m in matches]
+            except Exception as e:
+                print(f"[video_frame_scan] Frame {idx} failed: {e}")
+                return []
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = pool.map(_scan_single_frame, enumerate(frames))
+            for frame_matches in results:
+                all_matches.extend(frame_matches)
+
+        seen_urls = set()
+        unique_matches = []
+        for match, frame_idx in all_matches:
+            url = match["found_url"]
+            if url not in seen_urls:
+                seen_urls.add(url)
+                unique_matches.append((match, frame_idx))
+
+        unauthorized_count = 0
+        for idx, (match, frame_idx) in enumerate(unique_matches):
+            classification = classify_url(match["found_url"], trusted)
+            if classification == "unauthorized":
+                unauthorized_count += 1
+
+            domain = extract_domain(match["found_url"])
+            platform = categorize_platform(domain)
+
+            result_id = str(uuid.uuid4())
+            db.collection("scan_results").document(result_id).set({
+                "assetId":            asset_id,
+                "userId":             user_id,
+                "foundUrl":           match["found_url"],
+                "thumbnailUrl":       match.get("thumbnail_url", ""),
+                "confidence":         match["confidence"],
+                "severity":           match["severity"],
+                "classification":     classification,
+                "scannedAt":          scan_time,
+                "firstSeenAt":        scan_time,
+                "domain":             domain,
+                "platformType":       platform["type"],
+                "platformName":       platform["platform"],
+                "propagationOrder":   idx + 1,
+                "sourceFrame":        frame_idx,
+                "matchType":          "video-frame-web",
+                "status":             "flagged" if classification == "unauthorized" else "authorized",
+            })
+
+            if classification == "unauthorized":
+                risk = compute_risk_score([match], {"is_ai": False, "confidence": 0, "label": "unknown"})
+                alert_id = str(uuid.uuid4())
+                db.collection("alerts").document(alert_id).set({
+                    "assetId":       asset_id,
+                    "userId":        user_id,
+                    "scanResultId":  result_id,
+                    "confidence":    match["confidence"],
+                    "foundUrl":      match["found_url"],
+                    "thumbnailUrl":  match.get("thumbnail_url", ""),
+                    "severity":      match["severity"],
+                    "riskScore":     risk["score"],
+                    "riskLabel":     risk["label"],
+                    "classification": "unauthorized",
+                    "isRead":        False,
+                    "createdAt":     scan_time,
+                })
+
+        db.collection("assets").document(asset_id).update({
+            "status":            "complete",
+            "matchCount":        len(unique_matches),
+            "unauthorizedCount": unauthorized_count,
+            "authorizedCount":   len(unique_matches) - unauthorized_count,
+            "scanCount":         1,
+            "lastScannedAt":     scan_time,
+            "framesScanned":     len(frames),
+        })
+        print(f"[video_frame_scan] Done: {len(unique_matches)} matches from {len(frames)} frames")
+
+    except Exception as e:
+        print(f"[video_frame_scan] Error: {e}")
+        try:
+            db.collection("assets").document(asset_id).update({"status": "error"})
+        except Exception:
+            pass
+
+
+def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash, original_url, filename, content_type, wants_email=False):
+    """Heavy processing that runs in a background thread after upload returns.
+
+    Scan starts IMMEDIATELY in a separate thread. Watermarks/indexing run
+    in parallel and update Firestore independently — they never block the scan.
+    """
+    import gc
+
+    # ── SCAN FIRST — launch immediately in its own thread ──
+    def _run_scan_task():
+        try:
+            if resource_type == "image" and phash:
+                run_scan(asset_id, user_id, phash, original_url, file_bytes)
+            elif resource_type == "video":
+                _run_video_frame_scan(asset_id, user_id, file_bytes, original_url)
+            else:
+                db.collection("assets").document(asset_id).update({"status": "complete"})
+        except Exception as e:
+            print(f"[scan_task] Error: {e}")
+            try:
+                db.collection("assets").document(asset_id).update({"status": "error"})
+            except Exception:
+                pass
+
+    scan_thread = threading.Thread(target=_run_scan_task, daemon=True)
+    scan_thread.start()
+
+    # ── ENRICHMENT — watermarks, indexing, etc. (non-blocking) ──
+    try:
+        updates = {}
+        if wants_email:
+            updates["emailUpdates"] = True
+
         if resource_type in ("audio", "video"):
             try:
                 music_analysis = _get('services.music_detector', 'detect_music_from_bytes')(file_bytes, filename)
@@ -413,16 +552,13 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
                 print(f"[music] Detection failed: {e}")
 
         if resource_type == "image":
-            # PDQ hash
             try:
                 pdq_data = _get('services.pdq_hasher', 'compute_pdq')(file_bytes)
                 updates["pdqHash"] = pdq_data
-                print(f"[pdq] Hash: {pdq_data['hash'][:16]}... quality={pdq_data['quality']}")
             except Exception as e:
                 print(f"[pdq] Failed: {e}")
             gc.collect()
 
-            # Visible watermark
             try:
                 wm_bytes = _get('services.watermark', 'apply_visible_watermark')(
                     file_bytes, user_email=f"{user_id}@sportshield",
@@ -435,18 +571,15 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
                 print(f"[watermark] Failed: {e}")
             gc.collect()
 
-            # Invisible watermark
             try:
                 inv_bytes = _get('services.invisible_watermark', 'embed_watermark')(file_bytes, user_id=user_id, asset_id=asset_id)
                 inv_url = _get('services.cloudinary_client', 'upload_file')(inv_bytes, f"{asset_id}_inv", user_id, "image")
                 updates["invisibleWmUrl"] = inv_url
                 del inv_bytes
-                print(f"[invisible_wm] LSB embedded for asset {asset_id[:8]}")
             except Exception as e:
                 print(f"[invisible_wm] Failed: {e}")
             gc.collect()
 
-            # Forensic watermark
             try:
                 fw_result = _get('services.forensic_watermark', 'embed_forensic_watermark')(
                     file_bytes, user_id=user_id, asset_id=asset_id, session_id=asset_id,
@@ -456,22 +589,18 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
                 updates["forensicWmUrl"] = fw_url
                 updates["forensicWatermark"] = fw_result
                 del fw_bytes
-                print(f"[forensic_wm] DCT embedded: {fw_result['bits_embedded']} bits")
             except Exception as e:
                 print(f"[forensic_wm] Failed: {e}")
             gc.collect()
 
-            # CLIP indexing
             try:
                 clip_data = _get('services.clip_search', 'index_asset')(asset_id, user_id, file_bytes, filename)
                 if clip_data.get("indexed"):
                     updates["clipIndex"] = clip_data
-                    print(f"[clip] Indexed {clip_data['dimensions']}-dim vector")
             except Exception as e:
                 print(f"[clip] Indexing failed: {e}")
             gc.collect()
 
-            # C2PA signing
             try:
                 c2pa_result = _get('services.c2pa_credentials', 'sign_asset')(
                     file_bytes, user_id, asset_id, filename, content_type or "image/png",
@@ -487,34 +616,16 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
                         "standard": c2pa_result.get("standard"),
                     }
                     del c2pa_signed_bytes
-                    print(f"[c2pa] Content Credential signed")
             except Exception as e:
                 print(f"[c2pa] Failed: {e}")
             gc.collect()
 
-        # Update Firestore with all processed data
-        updates["status"] = "pending"
-        if wants_email:
-            updates["emailUpdates"] = True
-        db.collection("assets").document(asset_id).update(updates)
-        print(f"[upload] Background processing complete for {asset_id[:8]}")
-
-        # Start scan
-        if resource_type == "image" and phash:
-            run_scan(asset_id, user_id, phash, original_url, file_bytes)
-        elif resource_type == "video":
-            vfp_doc = db.collection("assets").document(asset_id).get().to_dict().get("videoFingerprint")
-            if vfp_doc and vfp_doc.get("frameHashes"):
-                run_video_scan(asset_id, user_id, vfp_doc, original_url)
-            else:
-                db.collection("assets").document(asset_id).update({"status": "complete"})
+        if updates:
+            db.collection("assets").document(asset_id).update(updates)
+            print(f"[upload] Enrichment complete for {asset_id[:8]}")
 
     except Exception as e:
-        print(f"[upload] Background processing error: {e}")
-        try:
-            db.collection("assets").document(asset_id).update({"status": "pending"})
-        except Exception:
-            pass
+        print(f"[upload] Enrichment error: {e}")
 
 
 # ── Social / web URL scan endpoint ──────────────────────────────────────────
@@ -1160,9 +1271,15 @@ async def trigger_rescan(asset_id: str):
         t.daemon = True
         t.start()
     elif asset.get("type") == "video":
-        vfp = asset.get("videoFingerprint")
-        if vfp and vfp.get("frameHashes"):
-            t = threading.Thread(target=run_video_scan, args=(asset_id, user_id, vfp, original_url))
+        try:
+            resp = httpx.get(original_url, timeout=30, follow_redirects=True)
+            resp.raise_for_status()
+            video_bytes = resp.content
+        except Exception:
+            video_bytes = None
+
+        if video_bytes:
+            t = threading.Thread(target=_run_video_frame_scan, args=(asset_id, user_id, video_bytes, original_url))
             t.daemon = True
             t.start()
         else:

@@ -21,14 +21,14 @@ _LARGE_THRESHOLD = 10_000_000  # 10 MB
 _SUFFIX = {"video": ".mp4", "audio": ".mp3"}
 
 
-def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
+def upload_file(file_bytes, asset_id, user_id, resource_type="image", content_type=None):
     # Optional Google Cloud Storage backend (STORAGE_BACKEND=gcs). Falls back
     # to Cloudinary automatically if GCS upload fails, so a bad GCS config
     # never breaks uploads.
     if STORAGE_BACKEND == "gcs":
         try:
             from services.gcs_client import upload_file as gcs_upload
-            return gcs_upload(file_bytes, asset_id, user_id, resource_type)
+            return gcs_upload(file_bytes, asset_id, user_id, resource_type, content_type=content_type)
         except Exception as e:
             print(f"[storage] GCS upload failed, falling back to Cloudinary: {e}")
 
