@@ -15,40 +15,38 @@ FALLBACK_MODEL = "https://api-inference.huggingface.co/models/umm-maybe/AI-image
 
 
 def _query_model(model_url: str, image_bytes: bytes, hf_token: str) -> list | None:
-    """Send image to a HuggingFace model and return raw results. Retries on 503 (cold start)."""
+    """Send image to a HuggingFace model and return raw results. One retry on 503."""
     import time
     headers = {"Authorization": f"Bearer {hf_token}"}
-    for attempt in range(3):
+    for attempt in range(2):
         try:
             resp = httpx.post(
                 model_url,
                 content=image_bytes,
                 headers=headers,
-                timeout=60,
+                timeout=15,
             )
             if resp.status_code == 503:
-                # Model is loading — wait and retry
-                wait = resp.json().get("estimated_time", 20)
-                print(f"[deepfake] Model loading, waiting {wait:.0f}s (attempt {attempt+1}/3)")
-                time.sleep(min(wait, 30))
-                continue
+                if attempt == 0:
+                    wait = min(resp.json().get("estimated_time", 10), 10)
+                    print(f"[deepfake] Model loading, waiting {wait:.0f}s")
+                    time.sleep(wait)
+                    continue
+                return None
             if resp.status_code != 200:
-                print(f"[deepfake] API returned {resp.status_code}: {resp.text[:200]}")
+                print(f"[deepfake] API returned {resp.status_code}")
                 return None
             data = resp.json()
             if isinstance(data, list):
-                print(f"[deepfake] Got results: {data}")
                 return data
             elif isinstance(data, dict) and "error" in data:
                 print(f"[deepfake] API error: {data['error']}")
                 return None
-            else:
-                print(f"[deepfake] Unexpected response format: {type(data)}")
-                return None
+            return None
         except Exception as e:
             print(f"[deepfake] Request error (attempt {attempt+1}): {e}")
-            if attempt < 2:
-                time.sleep(5)
+            if attempt == 0:
+                time.sleep(2)
     return None
 
 

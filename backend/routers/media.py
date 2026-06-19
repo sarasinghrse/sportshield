@@ -93,19 +93,39 @@ def run_scan(asset_id, user_id, phash, original_url, image_bytes=None):
     try:
         db.collection("assets").document(asset_id).update({"status": "scanning"})
 
-        # AI detection (runs in background alongside web scan)
+        # Run AI detection + deepfake + web scan in PARALLEL
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         ai_result = {"is_ai": False, "confidence": 0, "label": "unknown"}
         deepfake_result = {"isDeepfake": False, "confidence": 0, "label": "unknown", "riskLevel": "unknown"}
+
+        def _do_ai():
+            if image_bytes and HF_TOKEN:
+                return detect_ai_image(image_bytes, HF_TOKEN)
+            return ai_result
+
+        def _do_deepfake():
+            if image_bytes and HF_TOKEN:
+                return detect_deepfake(image_bytes, HF_TOKEN)
+            return deepfake_result
+
+        def _do_scan():
+            return scan_asset(phash, original_url, SERPAPI_KEY)
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            fut_ai = pool.submit(_do_ai)
+            fut_df = pool.submit(_do_deepfake)
+            fut_scan = pool.submit(_do_scan)
+
+            ai_result = fut_ai.result()
+            deepfake_result = fut_df.result()
+            matches = fut_scan.result()
+
         if image_bytes and HF_TOKEN:
-            ai_result = detect_ai_image(image_bytes, HF_TOKEN)
-            deepfake_result = detect_deepfake(image_bytes, HF_TOKEN)
             db.collection("assets").document(asset_id).update({
                 "aiDetection": ai_result,
                 "deepfakeAnalysis": deepfake_result,
             })
-
-        # Reverse image / web scan
-        matches = scan_asset(phash, original_url, SERPAPI_KEY)
 
         risk = compute_risk_score(matches, ai_result)
         trusted = get_trusted_domains(user_id)
