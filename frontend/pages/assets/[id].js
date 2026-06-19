@@ -212,7 +212,8 @@ export default function AssetDetail() {
               <button onClick={async () => {
                 try {
                   toast.loading('Triggering scan…', { id: 'scan' });
-                  await fetch(`${API_URL}/api/media/scan/${id}`, { method: 'POST' });
+                  const res = await fetch(`${API_URL}/api/media/rescan/${id}`, { method: 'POST' });
+                  if (!res.ok) throw new Error(`${res.status}`);
                   toast.success('Scan started!', { id: 'scan' });
                 } catch { toast.error('Failed to trigger scan', { id: 'scan' }); }
               }} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 20, padding: '3px 10px', background: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
