@@ -9,7 +9,7 @@ import MobileNav from '../components/MobileNav';
 import Footer from '../components/landing/Footer';
 
 const API_URL    = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const MAX_SIZE_MB = 50;
+const MAX_SIZE_MB = 30;
 const TAB_UPLOAD  = 'upload';
 const TAB_URL     = 'url';
 
@@ -93,7 +93,9 @@ export default function UploadPage() {
       clearInterval(iv);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(res.status === 502 || res.status === 503
+        throw new Error(res.status === 413
+          ? 'File too large for server. Try a smaller file (under 30 MB).'
+          : res.status === 502 || res.status === 503
           ? 'Server is starting up. Please wait a moment and try again.'
           : (body.detail || `Server error ${res.status}`));
       }

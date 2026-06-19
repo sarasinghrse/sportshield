@@ -13,6 +13,13 @@ _CONTENT_TYPE = {
     "audio": "audio/mpeg",
     "image": "image/jpeg",
 }
+_EXT_BY_MIME = {
+    "video/mp4": ".mp4", "video/quicktime": ".mov",
+    "video/x-msvideo": ".avi", "video/webm": ".webm",
+    "audio/mpeg": ".mp3", "audio/wav": ".wav",
+    "image/jpeg": ".jpg", "image/png": ".png",
+    "image/webp": ".webp", "image/gif": ".gif",
+}
 
 _client = None
 
@@ -25,7 +32,7 @@ def _bucket():
     return _client.bucket(GCS_BUCKET)
 
 
-def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
+def upload_file(file_bytes, asset_id, user_id, resource_type="image", content_type=None):
     """Upload bytes to the GCS bucket and return a public URL.
 
     Mirrors services.cloudinary_client.upload_file's signature/return so it
@@ -34,11 +41,13 @@ def upload_file(file_bytes, asset_id, user_id, resource_type="image"):
     if not GCS_BUCKET:
         raise RuntimeError("STORAGE_BACKEND=gcs but GCS_BUCKET is not set")
 
-    blob_name = f"sportshield/{user_id}/{asset_id}{_EXT.get(resource_type, '')}"
+    ext = _EXT_BY_MIME.get(content_type, "") if content_type else _EXT.get(resource_type, "")
+    ct = content_type or _CONTENT_TYPE.get(resource_type, "application/octet-stream")
+    blob_name = f"sportshield/{user_id}/{asset_id}{ext}"
     blob = _bucket().blob(blob_name)
     blob.upload_from_string(
         file_bytes,
-        content_type=_CONTENT_TYPE.get(resource_type, "application/octet-stream"),
+        content_type=ct,
     )
 
     # Works when the bucket uses fine-grained ACLs. With uniform bucket-level

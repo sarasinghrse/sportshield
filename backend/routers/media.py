@@ -482,10 +482,12 @@ def _post_upload_processing(asset_id, user_id, file_bytes, resource_type, phash,
         # Start scan
         if resource_type == "image" and phash:
             run_scan(asset_id, user_id, phash, original_url, file_bytes)
-        elif resource_type == "video" and phash:
+        elif resource_type == "video":
             vfp_doc = db.collection("assets").document(asset_id).get().to_dict().get("videoFingerprint")
-            if vfp_doc:
+            if vfp_doc and vfp_doc.get("frameHashes"):
                 run_video_scan(asset_id, user_id, vfp_doc, original_url)
+            else:
+                db.collection("assets").document(asset_id).update({"status": "complete"})
 
     except Exception as e:
         print(f"[upload] Background processing error: {e}")
