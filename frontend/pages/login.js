@@ -302,7 +302,7 @@ export default function LoginPage() {
                     });
                     if (res.ok) {
                       sessionStorage.setItem('adminAuth', JSON.stringify({ email: adminEmail, code: adminCode }));
-                      router.push('/admin-dashboard');
+                      router.replace('/admin-dashboard');
                     } else {
                       setAdminError('Invalid email or code.');
                     }

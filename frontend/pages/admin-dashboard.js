@@ -28,16 +28,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('adminAuth');
-    if (!stored) { router.push('/login'); return; }
+    if (!stored) { router.replace('/login'); return; }
     const creds = JSON.parse(stored);
     fetch(`${API_URL}/api/admin/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(creds),
     }).then(r => {
-      if (!r.ok) { sessionStorage.removeItem('adminAuth'); router.push('/login'); return; }
+      if (!r.ok) { sessionStorage.removeItem('adminAuth'); router.replace('/login'); return; }
       setAuth(creds);
-    }).catch(() => { router.push('/login'); });
+    }).catch(() => { router.replace('/login'); });
   }, []);
 
   useEffect(() => {
@@ -241,7 +241,7 @@ export default function AdminDashboard() {
             </button>
           ))}
           <button
-            onClick={() => { sessionStorage.removeItem('adminAuth'); router.push('/login'); }}
+            onClick={() => { sessionStorage.removeItem('adminAuth'); router.replace('/login'); }}
             className="ap-btn ap-btn-ghost"
             style={{ padding: '5px 12px', fontSize: '0.75rem', color: '#f87171', borderColor: 'rgba(239,68,68,0.25)' }}
           >
