@@ -1125,10 +1125,10 @@ async def trigger_rescan(asset_id: str):
     phash = asset.get("phash", "")
     original_url = asset.get("originalUrl", "")
 
-    if not phash or not original_url:
-        raise HTTPException(status_code=400, detail="Asset missing phash or URL")
+    if not original_url:
+        raise HTTPException(status_code=400, detail="Asset missing URL")
 
-    if asset.get("type") == "image":
+    if asset.get("type") == "image" and phash:
         try:
             resp = httpx.get(original_url, timeout=20, follow_redirects=True)
             resp.raise_for_status()
@@ -1139,8 +1139,16 @@ async def trigger_rescan(asset_id: str):
         t = threading.Thread(target=run_scan, args=(asset_id, user_id, phash, original_url, image_bytes))
         t.daemon = True
         t.start()
+    elif asset.get("type") == "video":
+        vfp = asset.get("videoFingerprint")
+        if vfp and vfp.get("frameHashes"):
+            t = threading.Thread(target=run_video_scan, args=(asset_id, user_id, vfp, original_url))
+            t.daemon = True
+            t.start()
+        else:
+            db.collection("assets").document(asset_id).update({"status": "complete"})
     else:
-        db.collection("assets").document(asset_id).update({"status": "scanning"})
+        db.collection("assets").document(asset_id).update({"status": "complete"})
 
     return {"assetId": asset_id, "status": "rescan_started"}
 

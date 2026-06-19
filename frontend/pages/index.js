@@ -82,7 +82,7 @@ export default function Dashboard() {
 
   const unread       = alerts.filter(a => !a.isRead).length;
   const totalMatches = assets.reduce((s, a) => s + (a.matchCount || 0), 0);
-  const scanning     = assets.filter(a => a.status === 'scanning').length;
+  const scanning     = assets.filter(a => a.status === 'scanning' || a.status === 'processing').length;
 
   const protectionScore = (() => {
     if (assets.length === 0) return 0;
@@ -334,10 +334,12 @@ export default function Dashboard() {
                 {assets.length > 0 && (
                   <button onClick={async () => {
                     try {
-                      for (const a of assets) {
-                        await fetch(`${API}/api/media/scan/${a.id}`, { method: 'POST' }).catch(() => {});
+                      const scannable = assets.filter(a => a.phash && a.originalUrl);
+                      if (!scannable.length) { toast.error('No scannable assets found'); return; }
+                      toast.success(`Scanning ${scannable.length} asset${scannable.length > 1 ? 's' : ''}...`);
+                      for (const a of scannable) {
+                        fetch(`${API}/api/media/rescan/${a.id}`, { method: 'POST' }).catch(() => {});
                       }
-                      toast && toast.success ? toast.success('Scans triggered for all assets') : alert('Scans triggered!');
                     } catch {}
                   }} style={{
                     fontSize: '0.78rem', color: '#34d399',
@@ -714,12 +716,14 @@ function estimateRiskScore(asset) {
 function AssetRow({ asset }) {
   const router = useRouter();
   const badgeMap = {
-    pending:  { label: 'Pending',  cls: 'db-badge-pending'  },
-    scanning: { label: 'Scanning', cls: 'db-badge-scanning' },
-    complete: { label: 'Complete', cls: 'db-badge-complete' },
-    error:    { label: 'Error',    cls: 'db-badge-error'    },
+    processing: { label: 'Processing', cls: 'db-badge-scanning' },
+    pending:    { label: 'Pending',     cls: 'db-badge-pending'  },
+    scanning:   { label: 'Scanning',    cls: 'db-badge-scanning' },
+    complete:   { label: 'Complete',    cls: 'db-badge-complete' },
+    error:      { label: 'Error',       cls: 'db-badge-error'    },
   };
-  const { label, cls } = badgeMap[asset.status] || badgeMap.pending;
+  const effectiveStatus = (asset.status === 'pending' && asset.matchCount > 0) ? 'complete' : asset.status;
+  const { label, cls } = badgeMap[effectiveStatus] || badgeMap.pending;
 
   return (
     <tr onClick={() => router.push(`/assets/${asset.id}`)}>
