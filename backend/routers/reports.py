@@ -17,8 +17,10 @@ logger = logging.getLogger(__name__)
 def _serialize_report(doc) -> dict:
     data = doc.to_dict()
     data["id"] = doc.id
-    if hasattr(data.get("generatedAt"), "isoformat"):
-        data["generatedAt"] = data["generatedAt"].isoformat()
+    for key in ("generatedAt", "emailSentAt"):
+        val = data.get(key)
+        if hasattr(val, "isoformat"):
+            data[key] = val.isoformat()
     return data
 
 
@@ -39,15 +41,16 @@ async def generate_report(req: GenerateRequest):
 @router.get("/latest")
 async def latest_report(user_id: str):
     try:
-        reports = list(
+        docs = list(
             db.collection("reports")
             .where("userId", "==", user_id)
-            .order_by("generatedAt", direction="DESCENDING")
-            .limit(1)
             .stream()
         )
-        if reports:
-            return _serialize_report(reports[0])
+        if not docs:
+            return None
+        serialized = [_serialize_report(d) for d in docs]
+        serialized.sort(key=lambda r: r.get("generatedAt", ""), reverse=True)
+        return serialized[0]
     except Exception as e:
         logger.error(f"[REPORTS] Latest query failed: {e}")
     return None
@@ -56,14 +59,14 @@ async def latest_report(user_id: str):
 @router.get("/history")
 async def report_history(user_id: str):
     try:
-        reports = list(
+        docs = list(
             db.collection("reports")
             .where("userId", "==", user_id)
-            .order_by("generatedAt", direction="DESCENDING")
-            .limit(12)
             .stream()
         )
-        return [_serialize_report(doc) for doc in reports]
+        serialized = [_serialize_report(d) for d in docs]
+        serialized.sort(key=lambda r: r.get("generatedAt", ""), reverse=True)
+        return serialized[:12]
     except Exception as e:
         logger.error(f"[REPORTS] History query failed: {e}")
         return []
