@@ -4,11 +4,6 @@
 
 Protect your sports media. Detect unauthorized use. Prove ownership.
 
-[![Live Demo](https://img.shields.io/badge/Live-sportshield--app-4ade80?style=flat-square)](https://sportshield--sportshield-app.us-central1.hosted.app)
-[![Backend API](https://img.shields.io/badge/API-Cloud%20Run-blue?style=flat-square)](https://sportshield-api-117814433634.us-central1.run.app)
-
----
-
 ## What It Does
 
 SportShield helps athletes, sports media companies, and content creators protect their digital assets. Upload images, videos, or audio — SportShield fingerprints them, monitors the web for unauthorized copies, generates DMCA takedowns, applies watermarks, and verifies ownership with cryptographic proof.
